@@ -12,6 +12,8 @@ import warnings
 if not sys.warnoptions:
     warnings.simplefilter("ignore")
 
+bucketname = 'gfcat-test'
+
 def recalibrate(eclipse,band,
         data_directory='/Volumes/BigDataDisk/gPhotonData/GTDS',
         rerun=False,retain=False):
@@ -24,8 +26,8 @@ def recalibrate(eclipse,band,
 
     # AWS: Check for a photometry file, indicating doneness.
     if not rerun:
-        cmd = "aws s3 mv s3://gfcat-test/data/e{e}/e{e}-{b}d-photom.csv {d}/e{e}/".format(
-            d=data_directory, e=eclipse, b='n' if band is 'NUV' else 'f')
+        cmd = "aws s3 mv s3://{bn}/data/e{e}/e{e}-{b}d-photom.csv {d}/e{e}/".format(
+            bn=bucketname, d=data_directory, e=eclipse, b='n' if band is 'NUV' else 'f')
         print('Checking for doneness...')
         print('\ttry: {cmd}'.format(cmd=cmd))
         os.system(cmd)
@@ -35,8 +37,8 @@ def recalibrate(eclipse,band,
                 shutil.rmtree('{d}/e{e}/'.format(d=data_directory,e=eclipse))
             return # already processed
 
-    cmd = "aws s3 sync s3://gfcat-test/data/e{e}/ {d}/e{e}/ --exclude '*{nb}d*'".format(
-            d=data_directory, e=eclipse, nb='f' if band is 'NUV' else 'n')
+    cmd = "aws s3 sync s3://{bn}/data/e{e}/ {d}/e{e}/ --exclude '*{nb}d*'".format(
+            bn=bucketname, d=data_directory, e=eclipse, nb='f' if band is 'NUV' else 'n')
     print('Retrieving existing data from s3 bucket.')
     print('\ttry: {cmd}'.format(cmd=cmd))
     os.system(cmd)
@@ -99,8 +101,8 @@ def recalibrate(eclipse,band,
                 os.remove(xcalfilename)
             except:
                 pass
-            cmd = "aws s3 sync {d} s3://gfcat-test/data/".format(
-                d=data_directory,e=eclipse,b='n' if band is 'NUV' else 'f')
+            cmd = "aws s3 sync {d} s3://{bn}/data/".format(
+                bn=bucketname, d=data_directory,e=eclipse,b='n' if band is 'NUV' else 'f')
             print('Moving data to s3 bucket.')
             print('\ttry: {cmd}'.format(cmd=cmd))
             os.system(cmd)
@@ -149,8 +151,8 @@ def recalibrate(eclipse,band,
     # Can run this locally to limit the amount of data to retrieve from AWS.
     #make_lightcurves(eclipse,band,data_directory=data_directory)
 
-    cmd = "aws s3 sync {d} s3://gfcat-test/data/".format(
-        d=data_directory,e=eclipse,b='n' if band is 'NUV' else 'f')
+    cmd = "aws s3 sync {d} s3://{bn}/data/".format(
+        bn=bucketname, d=data_directory,e=eclipse,b='n' if band is 'NUV' else 'f')
     print('Moving data to s3 bucket.')
     print('\ttry: {cmd}'.format(cmd=cmd))
     os.system(cmd)

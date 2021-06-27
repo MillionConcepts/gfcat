@@ -8,3 +8,5 @@ requests
 ffmpeg
 scipy
 sklearn
+pytables
+ffmpeg

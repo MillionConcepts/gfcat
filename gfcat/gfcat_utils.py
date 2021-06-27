@@ -25,6 +25,7 @@ from sklearn.cluster import AffinityPropagation
 from sklearn.cluster import DBSCAN
 from itertools import cycle
 import warnings
+import sqlalchemy as sql
 
 def obstype_from_eclipse(eclipse):
     try:
@@ -402,26 +403,26 @@ def make_images(
         print("No data.")
         return
 
-    if (
-        os.path.exists(photonfile.replace(".h5", "-cnt.fits"))
-        or os.path.exists(photonfile.replace(".h5", "-cnt.fits.gz"))
-    ) & (
-        os.path.exists(photonfile.replace(".h5", "-mov.fits"))
-        or os.path.exists(photonfile.replace(".h5", "-mov.fits.gz"))
-    ):
-        print(
-            "{band} images already exist for e{eclipse}.".format(
-                band=band, eclipse=eclipse
-            )
-        )
-        return
+ #   if (
+ #       os.path.exists(photonfile.replace(".h5", "-cnt.fits"))
+ #       or os.path.exists(photonfile.replace(".h5", "-cnt.fits.gz"))
+ #   ) & (
+ #       os.path.exists(photonfile.replace(".h5", "-mov.fits"))
+ #       or os.path.exists(photonfile.replace(".h5", "-mov.fits"))
+ #   ):
+ #       print(
+ #           "{band} images already exist for e{eclipse}.".format(
+ #               band=band, eclipse=eclipse
+ #           )
+ #       )
+ #       return
 
     xcalfilename = photonfile.replace(".h5", "-xcal.h5")
     print("Reading data from {xcalfilename}".format(xcalfilename=xcalfilename))
     events = pd.read_hdf(xcalfilename, "events")
     if (
-        not (0 in np.unique(events.flags.values)) or not np.isfinite(events["ra"]).any()
-    ):  # No unflagged data
+        not (0 in np.unique(events['flags'].values)) or not np.isfinite(events["ra"]).any()
+    ):
         print("No unflagged data.")
         pathlib.Path(
             os.path.dirname(photonfile) + "/No{band}".format(band=band)
@@ -432,7 +433,7 @@ def make_images(
         if not binsz:
             cntfilename = photonfile.replace(".h5", "-cnt.fits")
         else:
-            cntfilename = photonfile.replace(".h5", "-mov.fits")
+            cntfilename = photonfile.replace(".h5", f"-mov-{int(binsz)}s.fits")
         print("Integrating {cntfilename}".format(cntfilename=cntfilename))
         tranges, exptimes = [], []
         image, flagmap, edgemap = [], [], []  # to try to recover some memory
@@ -866,3 +867,22 @@ def varplot(eclipse, band):
     plt.semilogy()
     plt.title("{e} (n={n})".format(e=eclipse, n=n))
     return
+
+def query(query,catdbfile='catalog.db'):
+    # This will just run any SQL query that you feed it. The table is named "gfcat"
+    engine = sql.create_engine(f'sqlite:///{catdbfile}', echo=False)
+    out = engine.execute(query).fetchall()
+    engine.dispose()
+    return out
+
+def conesearch(skypos,match_radius=0.005,catdbfile='catalog.db'):
+    # This runs a box search in SQLite and then refines it into a cone
+    out = np.array(query(f"SELECT eclipse, id, ra, dec, xcenter, ycenter FROM gfcat WHERE ra >= {skypos[0]-match_radius} AND ra <={skypos[0]+match_radius} AND dec>= {skypos[1]-match_radius} AND dec<={skypos[1]+match_radius}"))
+    dist_ix = np.where(angularSeparation(skypos[0],skypos[1],
+                                         out[:,2],out[:,3])<=match_radius)
+    return pd.DataFrame({'eclipse':np.array(out[:,0][dist_ix],dtype='int16'),
+                         'id':np.array(out[:,1][dist_ix],dtype='int16'),
+                         'ra':out[:,2][dist_ix],
+                         'dec':out[:,3][dist_ix],
+                         'xcenter':out[:,4][dist_ix],
+                         'ycenter':out[:,5][dist_ix]})
