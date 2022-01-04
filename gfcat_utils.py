@@ -127,7 +127,8 @@ def eliminate_dupes(variable_table):
 #def make_qa_plot(lc,pixel_coords,image,flagmap,edgemap):
 
 
-def screen_for_variables(catdbfile='/Users/cm/GFCAT/catalog.db',
+def screen_for_variables(eclipses=[],
+                         catdbfile='/Users/cm/GFCAT/catalog.db',
                          photdir='/Users/cm/GFCAT/photom',
                          wrong_eclipse_file='/Users/cm/GFCAT/incorrectly_analyzed_eclipses.txt',
                          datadir='/Users/cm/GFCAT/data',plotdir='/Users/cm/GFCAT/data/plots',
@@ -147,7 +148,7 @@ def screen_for_variables(catdbfile='/Users/cm/GFCAT/catalog.db',
                        ]
     wrong_eclipses = pd.read_csv(wrong_eclipse_file)['eclipse'].values
     #for j, edir in enumerate(tqdm.tqdm(os.listdir(photdir))):
-    for j, edir in enumerate(tqdm.tqdm(['e05231','e05748','e35707','e43170','e44226',])):
+    for j, edir in enumerate(tqdm.tqdm(eclipses)):
 
         if edir in cursed_eclipses:
             continue

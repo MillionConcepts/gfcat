@@ -32,6 +32,8 @@ engine.dispose()
 eclipses = np.array(out)[:,0]
 
 # This takes many hours.
-screen_for_variables(catdbfile=catdbfile,
-                     photdir=photdir,
-                     wrong_eclipse_file=wrong_eclipse_file)
+for eclipse in eclipses:
+    screen_for_variables(eclipses=[f'e{str(eclipse).zfill(5)}',],
+                         catdbfile=catdbfile,
+                         photdir=photdir,
+                         wrong_eclipse_file=wrong_eclipse_file)
