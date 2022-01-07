@@ -2,13 +2,13 @@ from gfcat_utils import *
 import sqlalchemy as sql
 import numpy as np
 
-photdir = '/Users/cm/GFCAT/photom/' # Relative path to the local disk location of the photometry data
+photdir = '/home/ubuntu/datadir/' # Relative path to the local disk location of the photometry data
 if os.path.exists(photdir):
     print(f'There are {len(os.listdir(photdir))} processed eclipses.')
 else:
     raise f"{photdir} is not available"
 
-wrong_eclipse_file = '/Users/cm/GFCAT/incorrectly_analyzed_eclipses.txt'
+wrong_eclipse_file = '/home/ubuntu/incorrectly_analyzed_eclipses.txt'
 try:
     wrong_eclipses = pd.read_csv(wrong_eclipse_file)['eclipse'].values
     print(f'There are {len(wrong_eclipses)} accidentally processed eclipses.')
@@ -18,7 +18,7 @@ except FileNotFoundError:
 n_eclipses = len(os.listdir(photdir))-len(wrong_eclipses)
 print(f'There are notionally {n_eclipses} eclipses in GFCAT.')
 
-catdbfile='/Users/cm/GFCAT/catalog.db'
+catdbfile='/home/ubuntu/catalog.db'
 if not os.path.exists(catdbfile):
     # This will take like half an hour, but it's worth it.
     generate_visit_database(catdbfile=catdbfile,
