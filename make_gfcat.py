@@ -20,20 +20,17 @@ print(f'There are notionally {n_eclipses} eclipses in GFCAT.')
 
 catdbfile='/home/ubuntu/catalog.db'
 if not os.path.exists(catdbfile):
-    # This will take like half an hour, but it's worth it.
+    # This will take like half an hour the first time, but it's worth it.
     generate_visit_database(catdbfile=catdbfile,
                             photdir = photdir,
                             wrong_eclipse_file=wrong_eclipse_file)
 
-# Grab a list of all processed eclipses from photometry table
+# Grab a list of all processed eclipses from photometry table... this might take a minute...
 engine = sql.create_engine(f'sqlite:///{catdbfile}', echo=False)
 out = engine.execute(f"SELECT DISTINCT eclipse FROM gfcat ").fetchall()
 engine.dispose()
 eclipses = np.array(out)[:,0]
 
-# This takes many hours.
-for eclipse in eclipses:
-    screen_for_variables(eclipses=[f'e{str(eclipse).zfill(5)}',],
-                         catdbfile=catdbfile,
-                         photdir=photdir,
-                         wrong_eclipse_file=wrong_eclipse_file)
+# This is estimated to take 6-12 hours depending heavily on available iron
+candidate_variables = screen_gfcat(eclipses[:100])
+generate_qa_plots(candidate_variables)
