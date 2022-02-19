@@ -196,6 +196,17 @@ def parse_lightcurves(fn:str):
             lightcurves+=[lc]
     return lightcurves
 
+def is_spiky(lc:dict):
+    for sigma,n_outliers in [(3,3),(2,5)]: # sigma prominence is actually ~2x
+        upper_limit = (lc['cps'] + sigma * lc['cps_err'])
+        lower_limit = (lc['cps'] - sigma * lc['cps_err'])
+        for n in [1,2]: # number of bins to bunch up as "one" outlier
+            ix = np.where((lower_limit[n:-n] - upper_limit[:-int(n*2)] > 0) &
+                          (lower_limit[n:-n] - upper_limit[int(n*2):] > 0))[0]
+            if len(ix) >= n_outliers - any(lc['mask_flags'][n:-1][ix]): # be a little stricter if flagged
+                return True # This is a dumber test than the one above for the same thing. Seems more effective.
+    return False
+
 def screen_gfcat(eclipses,band='NUV',aper_radius=17,photdir='/Users/cm/GFCAT/photom',sigma=3):
     variables = {}
     for e in tqdm.tqdm(eclipses):
@@ -210,10 +221,12 @@ def screen_gfcat(eclipses,band='NUV',aper_radius=17,photdir='/Users/cm/GFCAT/pho
             if any(lc['edge_flags']):
                 continue # skip if there is any data near the detector edge
             ix = np.where((lc['cps']!=0) & (np.isfinite(lc['cps'])))[0]
-            if expt['t1'][ix[-1]] - expt['t0'][ix[0]]<300:
-                continue # skip if there are not at least 5 min of exposure on target
-            if len(ix)/(ix[-1]+1-ix[0])<0.5:
-                continue # skip if a majority of the bins are unobserved
+            if expt['t1'][ix[-1]] - expt['t0'][ix[0]]<500:
+                continue # skip if there are not at least 8 min of exposure on target
+                # This duration was chosen to eliminate a relatively high number of false positives
+                # in shorter visits. It is approx. 1/3rd duration of a full MIS-depth visit.
+            if len(ix)/(ix[-1]+1-ix[0])<0.75:
+                continue # skip if more than a quarter of the bins are unobserved
                 # NOTE: It's technically possible to have 30-second integrated flux on a source
                 #  be exactly equal to zero. But it's low probability and has no meaningful effect
                 #  on the variability search.
@@ -224,11 +237,14 @@ def screen_gfcat(eclipses,band='NUV',aper_radius=17,photdir='/Users/cm/GFCAT/pho
             outlier_ix = np.where((lc['cps'] - lc['cps_err'] * sigma)[ix] > second_min)[0]
             if len(outlier_ix) < 3:
                 continue # skip if there are not 3 significant outliers using the dumbest heuristic
+            if is_spiky(lc):
+                continue  # skip: multiple spiky peaks, most likely contaminated by an artifact
             peak_ix, _ = signal.find_peaks(lc['cps'], prominence=3 * lc['cps_err'], distance=4)
             if len(peak_ix):
                 if len(peak_ix) > 4:
-                    continue  # skip: multiple spiky peaks, most likely contaminated by an artifact
+                    continue  # skip multiple spiky peaks, most likely contaminated by an artifact
                 # NOTE: This test for spiky behavior is a little slower than I'd like, but workable.
+                #  And it does a more thorough job than the faster / simpler `is_spkey()` above.
             ad = stats.anderson(lc['cps'][ix])  # standard test of variability
             if ad.statistic <= ad.critical_values[2]:
                 continue  # failed the anderson-darling test at 5%
@@ -241,7 +257,7 @@ def screen_gfcat(eclipses,band='NUV',aper_radius=17,photdir='/Users/cm/GFCAT/pho
             continue # there are no candidate variables at this point
         # Now screen out variables in clumps, which are very probably due to transient artifacts
         varix = eliminate_dupes(pd.DataFrame(candidate_variables).to_dict('list'))
-        if len(varix) > 50:
+        if len(varix) >= 20:
             continue  # This is a cursed eclipse --- too many "variables" --- do not believe its lies
         variables[e] = varix
     return variables
@@ -259,7 +275,7 @@ def generate_qa_plots(vartable:dict,band='NUV',
         expt = parse_exposure_time(photpath.replace('photom.csv', 'exptime.csv'))
         cntfilename = f'{photdir}/e{str(e).zfill(5)}/e{str(e).zfill(5)}-{band[0].lower()}d-full.fits.gz'
         if not os.path.exists(cntfilename):
-            cmd = f'aws s3 cp s3://dream-pool/e{str(e).zfill(5)}/e{str(e).zfill(5)}-{band[0].lower()}d-full.fits.gz {cntfilename}'
+            cmd = f'aws s3 cp s3://dream-pool/e{str(e).zfill(5)}/e{str(e).zfill(5)}-{band[0].lower()}d-full.fits.gz {cntfilename} --quiet'
             os.system(cmd)
             if not os.path.exists(cntfilename):
                 raise FileNotFoundError(f'This file has lightcurves and should definitely exist.\n{cntfilename}')
@@ -300,157 +316,3 @@ def generate_qa_plots(vartable:dict,band='NUV',
             os.system(f'rm -rf {photdir}/e{str(e).zfill(5)}/')
     return
 
-def screen_for_variables(eclipses=[],
-                         catdbfile='/Users/cm/GFCAT/catalog.db',
-                         photdir='/Users/cm/GFCAT/photom',
-                         wrong_eclipse_file='/Users/cm/GFCAT/incorrectly_analyzed_eclipses.txt',
-                         datadir='/Users/cm/GFCAT/data',plotdir='/Users/cm/GFCAT/data/plots',
-                         aws=False):
-
-    if not sys.warnoptions:
-        import warnings
-        warnings.simplefilter("ignore")
-
-    observations = {'eclipse': [], 'id': [],
-                    'ra': [], 'dec': [],
-                    'xcenter': [], 'ycenter': [],
-                    'exptime': [], 'cps': [], 'cps_err': [],
-                    'hasmask': [], 'hasedge': [],
-                    'lc': []}
-    cursed_eclipses = ['e36918', 'e45622',  # eclipses that just seem to be bad but aren't otherwise filtered
-                       ]
-    wrong_eclipses = pd.read_csv(wrong_eclipse_file)['eclipse'].values
-    #for j, edir in enumerate(tqdm.tqdm(os.listdir(photdir))):
-    for j, edir in enumerate(tqdm.tqdm(eclipses)):
-
-        if edir in cursed_eclipses:
-            continue
-        try:
-            eclipse = int(edir[1:])
-        except ValueError:
-            continue  # not a normal eclipse directory
-        if eclipse in wrong_eclipses:
-            continue  # skipping accidentally processed eclipse
-        if not len(os.listdir(f'{photdir}/{edir}')):
-            continue  # light curves not created (for any number of reasons)
-        photstream = open(f'{photdir}/{edir}/{edir}-nd-30s-photom.csv')
-        phot = csv.DictReader(photstream)  # DictReader is >> faster than Pandas
-        expt = parse_exposure_time(f'{photdir}/{edir}/{edir}-nd-30s-exptime.csv')
-        if len(expt['tstart']) < 25:
-            continue  # not enough exposure time for me to care
-        tix = np.where(np.array(expt['exposure_time']) > 0)
-        varix = {'id': [], 'pos': [], 'cps': []}
-        for obj in phot:
-            visit_counts = float(obj['aperture_sum'])
-            observations['eclipse'] += [eclipse]
-            observations['id'] += [int(obj['id'])]
-            observations['ra'] += [float(obj['ra'])]
-            observations['dec'] += [float(obj['dec'])]
-            observations['xcenter'] += [float(obj['xcenter'])]
-            observations['ycenter'] += [float(obj['ycenter'])]
-            observations['exptime'] += [expt['expt_total']]
-            observations['cps'] += [visit_counts / expt['expt_total']]
-            observations['cps_err'] += [math.sqrt(visit_counts) / expt['expt_total']]
-            observations['hasmask'] += [float(obj['aperture_sum_mask']) > 0]
-            observations['hasedge'] += [float(obj['aperture_sum_edge']) > 0]
-
-            lc_counts = np.array([float(obj[f'aperture_sum_{i}']) for i in range(len(expt['exposure_time']))])
-            lc = {'cps': lc_counts / expt['exposure_time'],
-                  'cps_err': np.sqrt(lc_counts) / expt['exposure_time'],
-                  't0': expt['tstart'],
-                  'maskflag': np.array(
-                      [bool(float(obj[f'aperture_sum_flag_{i}']) > 0) for i in range(len(expt['exposure_time']))]),
-                  'edgeflag': np.array(
-                      [bool(float(obj[f'aperture_sum_edge_{i}']) > 0) for i in range(len(expt['exposure_time']))])}
-            observations['lc'] += [lc]
-
-            if any((np.array(lc['edgeflag'])[1:-1])):
-                continue  # if it even dips a toe into the red zone, don't bother
-
-            if len(np.where((np.array(lc['cps'])[1:-1] == 0) &
-                            (np.isnan(np.array(lc['cps'])[1:-1]) == 0))[0]) > 1:
-                continue  # large number of data dropouts makes the lc too noisy
-
-            if all((np.array(lc['maskflag'])[1:-1]) |
-                   (np.array(lc['edgeflag'])[1:-1]) |
-                   (np.array(lc['cps'])[1:-1] == 0) |
-                   np.isnan(np.array(lc['cps'])[1:-1])):
-                continue  # all of the data points are flagged or dropped
-
-            # Check for just bulk variability on approx. 6-sigma scale
-            sigma = 3
-            # The chance of one outlier low point over 50M visits is not small, generates a lot of false positives
-            # The chance of two outlier low points within a visit is small
-            # So use the second-lowest point in the visit as the standard
-            second_min = np.sort(np.unique((np.array(lc['cps']) + np.array(lc['cps_err']) * sigma)[1:-1]))[1]
-            ix = np.where(
-                (np.array(lc['cps']) - np.array(lc['cps_err']) * sigma)[1:-1] > second_min)
-            if len(ix[0]) < 3:  # There must be three data points 6-sigma above the lowest data point
-                continue
-
-            ix, _ = signal.find_peaks(lc['cps'], prominence=3 * lc['cps_err'], distance=4)
-            if len(ix):
-                if len(ix) > 4:
-                    continue  # multiple spiky peaks, most likely an artifact
-
-            # AD is the gold standard variability test, but it's relatively slow so pushed to last
-            ix = np.where(np.isfinite(np.array(lc['cps'])[1:-1]))
-            ad = stats.anderson(np.array(lc['cps'])[ix])  # standard test of variability
-            if ad.statistic <= ad.critical_values[2]:  # 5%
-                continue  # failed the anderson-darling test
-
-            # Whatever remains is a candidate variable
-            varix['id'] += [int(obj['id'])]
-            varix['pos'] += [(float(obj['xcenter']), float(obj['ycenter']))]
-            varix['cps'] += [observations['cps'][-1]]
-
-        if not len(varix['id']):
-            continue
-        varix = eliminate_dupes(varix)  # Screen variables very close to each other
-        if len(varix['id']) > 50:
-            continue  # This is a cursed eclipse --- too many "variables" --- do not believe its lies
-        # if there are any candidate variables, get the QA image
-        image_path = f'{datadir}/{edir}/{edir}-nd-full.fits.gz'
-        cmd = f'aws s3 cp s3://dream-pool/{edir}/{edir}-nd-full.fits.gz {image_path}'
-        os.system(cmd)
-        # Read the image data
-        image, flagmap, edgemap, wcs, _, _ = read_image(image_path)
-        image[np.where(np.isinf(image))] = 0  # because it pops out with inf values... IDK
-        for var in np.unique(varix['id']):
-            # Remember that the index on observations is (eclipse + id) !!!
-            ix = np.where((np.array(observations['id']) == var) & (np.array(observations['eclipse']) == eclipse))
-            lc = np.array(observations['lc'])[ix][0]
-            boxsz = 100
-            pos = [np.array(observations['ycenter'])[ix][0],
-                   np.array(observations['xcenter'])[ix][0]]
-            x1, x2, y1, y2 = (int(pos[0] - boxsz), int(pos[0] + boxsz),
-                              int(pos[1] - boxsz), int(pos[1] + boxsz))
-            norm = simple_norm(image[x1:x2, y1:y2], 'log')
-            fig = plt.figure(figsize=(12,15))
-            G = gridspec.GridSpec(4,2)
-            ax = fig.add_subplot(G[0:3,:])
-            ax.imshow(ZScaleInterval()(image[x1:x2, y1:y2]), cmap="Greys_r", origin="lower")
-            ax.imshow(1 / edgemap[x1:x2, y1:y2], origin="lower", cmap="Reds_r", alpha=1)
-            ax.imshow(1 / flagmap[x1:x2, y1:y2], origin="lower", cmap="Blues_r", alpha=1)
-            ax.plot(boxsz, boxsz, markersize=30, color='y', lw=10, marker='o', fillstyle='none')  # marker='o')
-            ax.set_xticks([])
-            ax.set_yticks([])
-
-            ax = fig.add_subplot(G[3,:])
-            ax.set_title(f"{edir} : {var}")
-            ax.errorbar(np.array(lc['t0'])[1:-1],
-                         np.array(lc['cps'])[1:-1],
-                         yerr=3 * np.array(lc['cps_err'])[1:-1],
-                         fmt='k-')
-            ix = np.where(np.array(lc['maskflag'])[1:-1])
-            ax.plot(np.array(lc['t0'])[1:-1][ix], np.array(lc['cps'])[1:-1][ix], 'bo')
-            ax.set_xticks([])
-            ax.set_ylabel('cps')
-            ix = np.where(np.array(lc['edgeflag'])[1:-1])
-            ax.plot(np.array(lc['t0'])[1:-1][ix], np.array(lc['cps'])[1:-1][ix], 'rx')
-            fig.savefig(f'{plotdir}/{edir}-{var}.png')
-            fig.close('all')
-        # clean up the local data
-        os.system(f'rm -rf {datadir}/{edir}')
-        photstream.close()
-    print('Done.')
