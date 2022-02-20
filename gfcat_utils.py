@@ -3,7 +3,6 @@ import tqdm
 import pandas as pd
 import csv
 import math
-import sqlalchemy as sql
 import numpy as np
 from scipy import signal, stats
 from sklearn.cluster import DBSCAN
