@@ -13,8 +13,8 @@ from astropy.io import fits as pyfits
 from astropy import wcs as pywcs
 from astropy.visualization import simple_norm, ZScaleInterval
 
-import pyarrow
-from pyarrow import parquet
+#import pyarrow
+#from pyarrow import parquet
 
 
 def make_wcs(
@@ -312,6 +312,6 @@ def generate_qa_plots(vartable:dict,band='NUV',
             plt.savefig(f'{plotdir}/e{str(e).zfill(5)}-{band}-{str(i).zfill(4)}.png')
             plt.close('all')
         if cleanup:
-            os.system(f'rm -rf {photdir}/e{str(e).zfill(5)}/')
+            os.system(f'rm -rf {photdir}/e{str(e).zfill(5)}/*full.fitz.gz')
     return
 

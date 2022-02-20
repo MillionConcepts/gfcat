@@ -46,7 +46,7 @@ conda install -c anaconda scipy -y
 conda install -c anaconda scikit-learn -y
 conda install -c anaconda matplotlib -y
 conda install -c anaconda astropy -y
-conda install -c conda-forge pyarrow -y
+conda install -c anaconda pyarrow -y
 ```
 
 ### Mount the EBS volume
@@ -61,6 +61,13 @@ cd
 sudo mkdir datadir
 sudo mount /dev/nvme1n1 datadir
 sudo chown -R ubuntu:ubuntu datadir
+```
+
+### Create the data paths
+```
+cd datadir
+mkdir photom
+mkdir plots
 ```
 
 ### Verify that the paths in `make_gfcat.py` are appropriate
