@@ -18,22 +18,9 @@ eclipses = [int(e[1:]) for e in os.listdir(f'{photdir}')]
 eclipses = list(set(eclipses).difference(set(wrong_eclipses)))
 print(f'There are notionally {len(eclipses)} eclipses in GFCAT.')
 
-#catdbfile='/Users/cm/GFCAT/catalog.db'
-#if not os.path.exists(catdbfile):
-#    # This will take like half an hour the first time, but it's worth it.
-#    generate_visit_database(catdbfile=catdbfile,
-#                            photdir = photdir,
-#                            wrong_eclipse_file=wrong_eclipse_file)
-
-# Grab a list of all processed eclipses from photometry table... this might take a minute...
-#engine = sql.create_engine(f'sqlite:///{catdbfile}', echo=False)
-#out = engine.execute(f"SELECT DISTINCT eclipse FROM gfcat ").fetchall()
-#engine.dispose()
-#eclipses = np.array(out)[:,0]
-
 #eclipses = [34413,29703,13655,29703,] # These eclipses known variables for testing
 # Variable screening takes 1-2 hours depending on available iron
 candidate_variables = screen_gfcat(eclipses[:10],photdir=photdir)
 # QA plot generation takes 6-12 hours, dominated by retrieving full frames from S3
 plotdir = '/home/ubuntu/datadir/plots/'
-generate_qa_plots(candidate_variables,photdir=photdir,plotdir=plotdir,cleanup=False)
+generate_qa_plots(candidate_variables,photdir=photdir,plotdir=plotdir,cleanup=True)

@@ -312,6 +312,6 @@ def generate_qa_plots(vartable:dict,band='NUV',
             plt.savefig(f'{plotdir}/e{str(e).zfill(5)}-{band}-{str(i).zfill(4)}.png')
             plt.close('all')
         if cleanup:
-            os.system(f'rm -rf {photdir}/e{str(e).zfill(5)}/*full.fitz.gz')
+            os.system(f'rm -rf {photdir}/e{str(e).zfill(5)}/*fits*')
     return
 
