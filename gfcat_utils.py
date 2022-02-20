@@ -211,6 +211,8 @@ def screen_gfcat(eclipses,band='NUV',aper_radius=17,photdir='/Users/cm/GFCAT/pho
     for e in tqdm.tqdm(eclipses):
         edir = f'e{str(e).zfill(5)}'
         photpath = f'{photdir}/{edir}/{edir}-{band.lower()[0]}d-30s-photom.csv'
+        if not os.path.exists(photpath):
+            continue # there is no photometry file for this eclipse + band
         expt = parse_exposure_time(photpath.replace('photom.csv', 'exptime.csv'))
         if np.sum(expt['expt_eff'])<300:
             continue # skip the whole eclipse if there is not at least 5 min of exposure total
@@ -270,8 +272,6 @@ def generate_qa_plots(vartable:dict,band='NUV',
     for e in tqdm.tqdm(vartable.keys()):
         edir = f'e{str(e).zfill(5)}'
         photpath = f'{photdir}/{edir}/{edir}-{band.lower()[0]}d-30s-photom.csv'
-        if not os.path.exists(photpath):
-            continue # there is no photometry file for this eclipse + band
         lightcurves = parse_lightcurves(photpath)
         expt = parse_exposure_time(photpath.replace('photom.csv', 'exptime.csv'))
         cntfilename = f'{photdir}/e{str(e).zfill(5)}/e{str(e).zfill(5)}-{band[0].lower()}d-full.fits.gz'
