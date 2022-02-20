@@ -20,7 +20,9 @@ print(f'There are notionally {len(eclipses)} eclipses in GFCAT.')
 
 #eclipses = [34413,29703,13655,29703,] # These eclipses known variables for testing
 # Variable screening takes 1-2 hours depending on available iron
-candidate_variables = screen_gfcat(eclipses[:10],photdir=photdir)
+print('Screening all sources for variable behavior...')
+candidate_variables = screen_gfcat(eclipses,photdir=photdir)
 # QA plot generation takes 6-12 hours, dominated by retrieving full frames from S3
 plotdir = '/home/ubuntu/datadir/plots/'
+print('Generating QA plots of candidate variables...')
 generate_qa_plots(candidate_variables,photdir=photdir,plotdir=plotdir,cleanup=True)
