@@ -275,6 +275,8 @@ def generate_qa_plots(vartable:dict,band='NUV',
     for e in tqdm.tqdm(vartable.keys()):
         edir = f'e{str(e).zfill(5)}'
         photpath = f'{photdir}/{edir}/{edir}-{band.lower()[0]}d-30s-photom.csv'
+        if all([os.path.exists(f'{plotdir}/e{str(e).zfill(5)}-{band}-{str(i).zfill(4)}.png') for i in vartable[e]]):
+            continue # these QA plots have already been created
         lightcurves = parse_lightcurves(photpath)
         expt = parse_exposure_time(photpath.replace('photom.csv', 'exptime.csv'))
         cntfilename = f'{photdir}/e{str(e).zfill(5)}/e{str(e).zfill(5)}-{band[0].lower()}d-full.fits.gz'
