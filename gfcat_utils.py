@@ -140,8 +140,6 @@ def eliminate_dupes(variable_table):
             varix['id']+=np.array(variable_table['id'])[dbix].tolist()
     return varix['id']
 
-#def make_qa_plot(lc,pixel_coords,image,flagmap,edgemap):
-
 def parse_exposure_time(fn:str):
     # parse the exposure time files... quickly...
     with open(fn) as data:
@@ -243,7 +241,7 @@ def screen_gfcat(eclipses,band='NUV',aper_radius=17,photdir='/Users/cm/GFCAT/pho
                 continue  # skip: multiple spiky peaks, most likely contaminated by an artifact
             peak_ix, _ = signal.find_peaks(lc['cps'], prominence=3 * lc['cps_err'], distance=4)
             if len(peak_ix):
-                if len(peak_ix) > 4:
+                if len(peak_ix) > 3:
                     continue  # skip multiple spiky peaks, most likely contaminated by an artifact
                 # NOTE: This test for spiky behavior is a little slower than I'd like, but workable.
                 #  And it does a more thorough job than the faster / simpler `is_spikey()` above.
@@ -259,7 +257,7 @@ def screen_gfcat(eclipses,band='NUV',aper_radius=17,photdir='/Users/cm/GFCAT/pho
             continue # there are no candidate variables at this point
         # Now screen out variables in clumps, which are very probably due to transient artifacts
         varix = eliminate_dupes(pd.DataFrame(candidate_variables).to_dict('list'))
-        if len(varix) >= 20:
+        if len(varix) >= 10:
             continue  # This is a cursed eclipse --- too many "variables" --- do not believe its lies
         if len(varix) == 0:
             continue # there are no variables
@@ -270,13 +268,14 @@ def generate_qa_plots(vartable:dict,band='NUV',
                       photdir='/Users/cm/GFCAT/photom',
                       plotdir='/Users/cm/GFCAT/plots',
                       cleanup=False,
-                      boxsz = 200 # pixels margin, so 2x this is the width
+                      boxsz = 200, # pixels margin, so 2x this is the width
+                      rerun = False,
                         ):
     for e in tqdm.tqdm(vartable.keys()):
+        if not rerun and all([os.path.exists(f'{plotdir}/e{str(e).zfill(5)}-{band}-{str(i).zfill(4)}.png') for i in vartable[e]]):
+            continue # these QA plots have already been created, so skip
         edir = f'e{str(e).zfill(5)}'
         photpath = f'{photdir}/{edir}/{edir}-{band.lower()[0]}d-30s-photom.csv'
-        if all([os.path.exists(f'{plotdir}/e{str(e).zfill(5)}-{band}-{str(i).zfill(4)}.png') for i in vartable[e]]):
-            continue # these QA plots have already been created
         lightcurves = parse_lightcurves(photpath)
         expt = parse_exposure_time(photpath.replace('photom.csv', 'exptime.csv'))
         cntfilename = f'{photdir}/e{str(e).zfill(5)}/e{str(e).zfill(5)}-{band[0].lower()}d-full.fits.gz'
@@ -310,14 +309,22 @@ def generate_qa_plots(vartable:dict,band='NUV',
             ax.set_xticks([])
             ax.set_yticks([])
 
-            # make a QA image that is wider
+            # make a QA image of the full detector
             ax = fig.add_subplot(G[:3,2:])
-            ax.imshow(ZScaleInterval()(image), cmap="Greys_r", origin="lower")
-            ax.imshow(1 / edgemap, origin="lower", cmap="Reds_r", alpha=1)
-            ax.imshow(1 / flagmap, origin="lower", cmap="Blues_r", alpha=1)
+            # The cropping is here to handle very wide images created by inappropriate handling
+            # of map projection distortions when initializing the image size during processing;
+            # this has been fixed in the pipeline, but not for the data we have.
+            x1,x2,y1,y2 = (max(int(imsz[0]/2-imsz[0]/2),0),
+                           min(int(imsz[0]/2+imsz[0]/2),imsz[0]),
+                           max(int(imsz[1]/2-imsz[0]/2),0),
+                           min(int(imsz[1]/2+imsz[0]/2),imsz[1]))
+            ax.imshow(ZScaleInterval()(image[x1:x2,y1:y2]), cmap="Greys_r", origin="lower")
+            ax.imshow(1 / edgemap[x1:x2,y1:y2], origin="lower", cmap="Reds_r", alpha=1)
+            ax.imshow(1 / flagmap[x1:x2,y1:y2], origin="lower", cmap="Blues_r", alpha=1)
             #ax.plot(boxsz, boxsz, markersize=30, color='y', lw=10, marker='o', fillstyle='none')  # marker='o')
             #ax.set_xlim([imgy-1000,imgy+1000])
-            ax.set_ylim([int(imsz[0]/2-imsz[1]/2),int(imsz[0]/2+imsz[1]/2)])
+            #ax.set_xlim([int(imsz[1]/2-imsz[0]/2),int(imsz[1]/2+imsz[0]/2)])
+            #ax.set_ylim([int(imsz[0]/2-imsz[0]/2),int(imsz[0]/2+imsz[0]/2)])
             ax.set_xticks([])
             ax.set_yticks([])
 
@@ -337,7 +344,7 @@ def generate_qa_plots(vartable:dict,band='NUV',
             os.system(f'rm -rf {photdir}/e{str(e).zfill(5)}/*fits*')
     return
 
-def get_visit_data(eclipse:int,index:int,band='NUV',photdir='/Users/cm/GFCAT/photom'):
+def get_target_data(eclipse:int,index:int,band='NUV',photdir='/Users/cm/GFCAT/photom'):
     edir = f'e{str(eclipse).zfill(5)}'
     photpath = f'{photdir}/{edir}/{edir}-{band.lower()[0]}d-30s-photom.csv'
     lc = parse_lightcurves(photpath)[index]
@@ -358,7 +365,7 @@ def get_simbad_id(skypos):
     return result_table[0]
 
 def quick_summarize_visit(eclipse:int,index:int,band='NUV',photdir='/Users/cm/GFCAT/photom'):
-    lc = get_visit_data(eclipse,index,band=band,photdir=photdir)
+    lc = get_target_data(eclipse,index,band=band,photdir=photdir)
     print(f'skypos:  {np.round(lc["ra"],5)}, {np.round(lc["dec"],5)}')
     print(f'eclipse: {eclipse}')
     print(f'index:   {index}')

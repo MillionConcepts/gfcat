@@ -1,13 +1,15 @@
+Instructions for setting up EC2 and mining lightcurve data
+
+Using `m6i.xlarge` instance.
+
 ### Update operating system:
 `sudo apt update && sudo apt upgrade`
 
-and restart
+and restart if necessary
 
-### Install miniconda
+### Install mamba
 ```
-#wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 wget https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Linux-x86_64.sh
-#bash Miniconda3-latest-Linux-x86_64.sh
 bash Mambaforge-Linux-x86_64.sh
 ```
 * must confirm license and location (use defaults)
