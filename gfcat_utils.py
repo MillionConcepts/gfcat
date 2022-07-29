@@ -12,6 +12,13 @@ import sys
 from astropy.io import fits as pyfits
 from astropy import wcs as pywcs
 from astropy.visualization import simple_norm, ZScaleInterval
+from rich import print
+import astropy
+from astroquery.simbad import Simbad
+Simbad.add_votable_fields("otype")
+import astropy.units as u
+import time
+
 
 #import pyarrow
 #from pyarrow import parquet
@@ -48,23 +55,6 @@ def read_image(fn):
         edgemap = None
     hdu.close()
     return image, flagmap, edgemap, wcs, tranges, exptimes
-
-# def parse_exposure_time(fn:str):
-#     # parse the exposure time files... quickly...
-#     expt = csv.DictReader(open(fn)) # way faster to parse the file like this
-#     n,expt_total = 0,0
-#     exposures = []
-#     t0,t1 = [], []
-#     for frame in expt:
-#         n+=1
-#         expt_total+=float(frame['expt'])
-#         exposures+=[float(frame['expt'])]
-#         t0+=[float(frame['t0'])]
-#         t1+=[float(frame['t1'])]
-#     return {'expt_total':expt_total,
-#             'exposure_time':exposures, # should assign dtypes for speed?
-#             'tstart':t0,
-#             'tstop':t1}
 
 def generate_visit_database(catdbfile='/Users/cm/GFCAT/catalog.parquet',
                             photdir = '/Users/cm/GFCAT/photom',
@@ -145,7 +135,7 @@ def eliminate_dupes(variable_table):
             continue
         elif len(dbix)>1: # small cluster -- use only the brightest
             ix = [np.argmax(np.array(variable_table['cps'])[dbix])]
-            varix['id']+=np.array(variable_table['id'])[ix].tolist()
+            varix['id']+=np.array(variable_table['id'])[dbix][ix].tolist() # Earlier version was missing dbix ---Fixed 220227
         else:
             varix['id']+=np.array(variable_table['id'])[dbix].tolist()
     return varix['id']
@@ -183,7 +173,7 @@ def parse_lightcurves(fn:str):
             try:
                 lc['counts'] = np.array([float(row[f'aperture_sum_{n}']) for n in range(len(expt['t0']))])
                 # NOTE: There is a bug in the version of gPhoton that generated these photometry files that
-                #  switches the "mask" and "edge" columns. Discovered 220218.
+                #  switches the "mask" and "edge" columns. Bug discovered 220218.
                 lc['edge_flags'] = np.array([float(row[f'aperture_sum_flag_{n}']) for n in range(len(expt['t0']))],dtype=bool)
                 lc['mask_flags'] = np.array([float(row[f'aperture_sum_edge_{n}']) for n in range(len(expt['t0']))],dtype=bool)
             except ValueError:
@@ -192,6 +182,8 @@ def parse_lightcurves(fn:str):
             lc['cps_err'] = np.array(np.sqrt(lc['counts']) / expt['expt_eff'])
             lc['xcenter'] = float(row['xcenter'])
             lc['ycenter'] = float(row['ycenter'])
+            lc['ra'] = float(row['ra'])
+            lc['dec'] = float(row['dec'])
             lightcurves+=[lc]
     return lightcurves
 
@@ -206,7 +198,9 @@ def is_spiky(lc:dict):
                 return True # This is a dumber test than the one above for the same thing. Seems more effective.
     return False
 
-def screen_gfcat(eclipses,band='NUV',aper_radius=17,photdir='/Users/cm/GFCAT/photom',sigma=3):
+def screen_gfcat(eclipses,band='NUV',aper_radius=17,photdir='/Users/cm/GFCAT/photom',sigma=3,
+                 cps_10p_rolloff={'NUV': 311, 'FUV': 109}, # non-linear regime given by calpaper
+                 ):
     variables = {}
     for e in tqdm.tqdm(eclipses):
         edir = f'e{str(e).zfill(5)}'
@@ -221,6 +215,8 @@ def screen_gfcat(eclipses,band='NUV',aper_radius=17,photdir='/Users/cm/GFCAT/pho
         for i,lc in enumerate(lightcurves):
             if any(lc['edge_flags']):
                 continue # skip if there is any data near the detector edge
+            if any(lc['mask_flags'][ix]): #if all(lc['mask_flags'][ix]):
+                continue  # skip if there is any data covered by the hotspot mask
             ix = np.where((lc['cps']!=0) & (np.isfinite(lc['cps'])))[0]
             if expt['t1'][ix[-1]] - expt['t0'][ix[0]]<500:
                 continue # skip if there are not at least 8 min of exposure on target
@@ -231,6 +227,11 @@ def screen_gfcat(eclipses,band='NUV',aper_radius=17,photdir='/Users/cm/GFCAT/pho
                 # NOTE: It's technically possible to have 30-second integrated flux on a source
                 #  be exactly equal to zero. But it's low probability and has no meaningful effect
                 #  on the variability search.
+            sort_ix = np.argsort(lc["cps"][ix])
+            if len(np.where(lc["mask_flags"][ix][sort_ix][-10:])[0]) >= 5:
+                continue # more than half of the brightest points are flagged by the hotspot mask
+            if (lc["cps"][ix][sort_ix[1]] > 170):# and (lc["cps"][ix][sort_ix[-1]]>300):
+                continue # skip if the whole visit is >14.5 AB Mag in NUV
             # The chance of one outlier low point over 50M visits is not small, generates a lot of false positives
             # The chance of two outlier low points within a visit is small.
             # So use the second-lowest point in the visit as the benchmark.
@@ -245,7 +246,7 @@ def screen_gfcat(eclipses,band='NUV',aper_radius=17,photdir='/Users/cm/GFCAT/pho
                 if len(peak_ix) > 4:
                     continue  # skip multiple spiky peaks, most likely contaminated by an artifact
                 # NOTE: This test for spiky behavior is a little slower than I'd like, but workable.
-                #  And it does a more thorough job than the faster / simpler `is_spkey()` above.
+                #  And it does a more thorough job than the faster / simpler `is_spikey()` above.
             ad = stats.anderson(lc['cps'][ix])  # standard test of variability
             if ad.statistic <= ad.critical_values[2]:
                 continue  # failed the anderson-darling test at 5%
@@ -260,6 +261,8 @@ def screen_gfcat(eclipses,band='NUV',aper_radius=17,photdir='/Users/cm/GFCAT/pho
         varix = eliminate_dupes(pd.DataFrame(candidate_variables).to_dict('list'))
         if len(varix) >= 20:
             continue  # This is a cursed eclipse --- too many "variables" --- do not believe its lies
+        if len(varix) == 0:
+            continue # there are no variables
         variables[e] = varix
     return variables
 
@@ -286,21 +289,36 @@ def generate_qa_plots(vartable:dict,band='NUV',
             imgx, imgy = lc['xcenter'],lc['ycenter'] # the image pixel coordinate of the source
             # define the bounding box for the thumbnail
             imsz = np.shape(image)
+
+            fig = plt.figure(figsize=(20, 15))
+            G = gridspec.GridSpec(4, 4)
+
+            # make a QA image that is zoomed in
             # noting that image coordinates and numpy coordinates are flipped
             x1, x2, y1, y2 = (max(int(imgy - boxsz),0),
                               min(int(imgy + boxsz),imsz[0]),
                               max(int(imgx - boxsz),0),
                               min(int(imgx + boxsz),imsz[1]))
 
-            fig = plt.figure(figsize=(12, 15))
-            G = gridspec.GridSpec(4,2)
-            ax = fig.add_subplot(G[0:3,:])
+            ax = fig.add_subplot(G[:3,:2])
             ax.imshow(ZScaleInterval()(image[x1:x2, y1:y2]), cmap="Greys_r", origin="lower")
             ax.imshow(1 / edgemap[x1:x2, y1:y2], origin="lower", cmap="Reds_r", alpha=1)
             ax.imshow(1 / flagmap[x1:x2, y1:y2], origin="lower", cmap="Blues_r", alpha=1)
             ax.plot(boxsz, boxsz, markersize=30, color='y', lw=10, marker='o', fillstyle='none')  # marker='o')
             ax.set_xticks([])
             ax.set_yticks([])
+
+            # make a QA image that is wider
+            ax = fig.add_subplot(G[:3,2:])
+            ax.imshow(ZScaleInterval()(image), cmap="Greys_r", origin="lower")
+            ax.imshow(1 / edgemap, origin="lower", cmap="Reds_r", alpha=1)
+            ax.imshow(1 / flagmap, origin="lower", cmap="Blues_r", alpha=1)
+            #ax.plot(boxsz, boxsz, markersize=30, color='y', lw=10, marker='o', fillstyle='none')  # marker='o')
+            #ax.set_xlim([imgy-1000,imgy+1000])
+            ax.set_ylim([int(imsz[0]/2-imsz[1]/2),int(imsz[0]/2+imsz[1]/2)])
+            ax.set_xticks([])
+            ax.set_yticks([])
+
 
             ax = fig.add_subplot(G[3,:])
             #ax.set_title(f"{edir} : {var}")
@@ -316,4 +334,52 @@ def generate_qa_plots(vartable:dict,band='NUV',
         if cleanup:
             os.system(f'rm -rf {photdir}/e{str(e).zfill(5)}/*fits*')
     return
+
+def get_visit_data(eclipse:int,index:int,band='NUV',photdir='/Users/cm/GFCAT/photom'):
+    edir = f'e{str(eclipse).zfill(5)}'
+    photpath = f'{photdir}/{edir}/{edir}-{band.lower()[0]}d-30s-photom.csv'
+    lc = parse_lightcurves(photpath)[index]
+    return lc
+
+def get_simbad_id(skypos):
+    ra, dec = skypos
+    skypos_obj = astropy.coordinates.SkyCoord(ra,dec,unit='deg')
+    r = 1*u.arcminute
+    result_table = Simbad.query_region(skypos_obj,r)
+    #try:
+    #    simbad_id = result_table[0]['MAIN_ID']
+    #    #this [0] index grabs the top result for the skypos within the aperture search radius.
+    #except TypeError: # a TypeError will be raised if no Simbad ID is found
+    #    simbad_id = '-'
+    # NOTE: you will get blacklisted if you submit > 5-10 queries/sec, and this function will be used in a loop
+    #time.sleep(0.5)
+    return result_table[0]
+
+def quick_summarize_visit(eclipse:int,index:int,band='NUV',photdir='/Users/cm/GFCAT/photom'):
+    lc = get_visit_data(eclipse,index,band=band,photdir=photdir)
+    print(f'skypos:  {np.round(lc["ra"],5)}, {np.round(lc["dec"],5)}')
+    print(f'eclipse: {eclipse}')
+    print(f'index:   {index}')
+    try:
+        simbad = get_simbad_id((lc['ra'],lc['dec']))
+        print(f'name:    {simbad["MAIN_ID"].decode()}')
+        print(f'otype:   {simbad["OTYPE"].decode()}')
+    except TypeError:
+        print('**No SIMBAD entry.**')
+    return
+
+def summarize_all_visits(eclipses, band='NUV', aper_radius=17, photdir='/Users/cm/GFCAT/photom', sigma=3,
+        cps_10p_rolloff={'NUV': 311, 'FUV': 109},  # non-linear regime given by calpaper
+        ):
+        for e in tqdm.tqdm(eclipses):
+            edir = f'e{str(e).zfill(5)}'
+            photpath = f'{photdir}/{edir}/{edir}-{band.lower()[0]}d-30s-photom.csv'
+            if not os.path.exists(photpath):
+                continue  # there is no photometry file for this eclipse + band
+            expt = parse_exposure_time(photpath.replace('photom.csv', 'exptime.csv'))
+            if np.sum(expt['expt_eff']) < 300:
+                continue  # skip the whole eclipse if there is not at least 5 min of exposure total
+            lightcurves = parse_lightcurves(photpath)
+            for i, lc in enumerate(lightcurves):
+                continue
 

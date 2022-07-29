@@ -4,14 +4,18 @@ and restart
 
 ### Install miniconda
 ```
-wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-bash Miniconda3-latest-Linux-x86_64.sh
+#wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+wget https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Linux-x86_64.sh
+#bash Miniconda3-latest-Linux-x86_64.sh
+bash Mambaforge-Linux-x86_64.sh
 ```
 * must confirm license and location (use defaults)
 * close and reopen shell
 
 ### Intall git
-`sudo apt-get install git`
+```
+sudo apt-get install git
+```
 
 Note: this is probably already installed, in which case this is just a check.
 
@@ -46,7 +50,9 @@ conda install -c anaconda scipy -y
 conda install -c anaconda scikit-learn -y
 conda install -c anaconda matplotlib -y
 conda install -c anaconda astropy -y
+conda install -c conda-forge rich -y
 conda install -c anaconda pyarrow -y
+conda install -c conda-forge astroquery 
 ```
 
 ### Mount the EBS volume
@@ -77,4 +83,6 @@ vi make_gfcat.py
 ```
 
 ### Make GFCAT
-`python make_gfcat.py`
+```
+python make_gfcat.py
+```
