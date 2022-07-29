@@ -8,6 +8,7 @@ from scipy import signal, stats
 from sklearn.cluster import DBSCAN
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
+from matplotlib.patches import Rectangle
 import sys
 from astropy.io import fits as pyfits
 from astropy import wcs as pywcs
@@ -291,7 +292,7 @@ def generate_qa_plots(vartable:dict,band='NUV',
             # define the bounding box for the thumbnail
             imsz = np.shape(image)
 
-            fig = plt.figure(figsize=(20, 15))
+            fig = plt.figure(figsize=(17, 15))
             G = gridspec.GridSpec(4, 4)
 
             # make a QA image that is zoomed in
@@ -314,13 +315,15 @@ def generate_qa_plots(vartable:dict,band='NUV',
             # The cropping is here to handle very wide images created by inappropriate handling
             # of map projection distortions when initializing the image size during processing;
             # this has been fixed in the pipeline, but not for the data we have.
-            x1,x2,y1,y2 = (max(int(imsz[0]/2-imsz[0]/2),0),
-                           min(int(imsz[0]/2+imsz[0]/2),imsz[0]),
-                           max(int(imsz[1]/2-imsz[0]/2),0),
-                           min(int(imsz[1]/2+imsz[0]/2),imsz[1]))
-            ax.imshow(ZScaleInterval()(image[x1:x2,y1:y2]), cmap="Greys_r", origin="lower")
-            ax.imshow(1 / edgemap[x1:x2,y1:y2], origin="lower", cmap="Reds_r", alpha=1)
-            ax.imshow(1 / flagmap[x1:x2,y1:y2], origin="lower", cmap="Blues_r", alpha=1)
+            x1_,x2_,y1_,y2_ = (max(int(imsz[0]/2-imsz[0]/2),0),
+                               min(int(imsz[0]/2+imsz[0]/2),imsz[0]),
+                               max(int(imsz[1]/2-imsz[0]/2),0),
+                               min(int(imsz[1]/2+imsz[0]/2),imsz[1]))
+            ax.imshow(ZScaleInterval()(image[x1_:x2_,y1_:y2_]), cmap="Greys_r", origin="lower")
+            ax.imshow(1 / edgemap[x1_:x2_,y1_:y2_], origin="lower", cmap="Reds_r", alpha=1)
+            ax.imshow(1 / flagmap[x1_:x2_,y1_:y2_], origin="lower", cmap="Blues_r", alpha=1)
+            rect = Rectangle((y1-y1_, x1-x1_), 2*boxsz, 2*boxsz, linewidth=1, edgecolor='y', facecolor='none')
+            ax.add_patch(rect)
             #ax.plot(boxsz, boxsz, markersize=30, color='y', lw=10, marker='o', fillstyle='none')  # marker='o')
             #ax.set_xlim([imgy-1000,imgy+1000])
             #ax.set_xlim([int(imsz[1]/2-imsz[0]/2),int(imsz[1]/2+imsz[0]/2)])
@@ -338,6 +341,7 @@ def generate_qa_plots(vartable:dict,band='NUV',
                 ax.plot(np.array(expt['t0'])[ix],lc['cps'][ix],'ro')
             ax.set_xticks([])
 
+            plt.tight_layout()
             plt.savefig(f'{plotdir}/e{str(e).zfill(5)}-{band}-{str(i).zfill(4)}.png')
             plt.close('all')
         if cleanup:

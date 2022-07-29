@@ -28,4 +28,4 @@ candidate_variables = screen_gfcat(eclipses[:100],photdir=photdir)
 plotdir = '/home/ubuntu/datadir/plots/'
 plotdir = '/Users/cm/GFCAT/data/plots/'
 print('Generating QA plots of candidate variables...')
-#generate_qa_plots(candidate_variables,photdir=photdir,plotdir=plotdir,cleanup=True)
+#generate_qa_plots(candidate_variables,photdir=photdir,plotdir=plotdir,cleanup=True,rerun=True)

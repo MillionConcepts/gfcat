@@ -51,8 +51,6 @@ mamba install astroquery -y
 ```
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 sudo apt install unzip
-```
-```
 unzip awscliv2.zip
 sudo ./aws/install
 aws configure
@@ -66,11 +64,11 @@ lsblk
 ```
 find the 100Gb EBS volume... maybe xvdb... maybe nvme1n1... etc. and sbu that in below
 ```
-sudo file -s /dev/xvdb
-sudo mkfs -t ext4 /dev/xvdb
+sudo file -s /dev/nvme1n1
+sudo mkfs -t ext4 /dev/nvme1n1
 cd
 sudo mkdir datadir
-sudo mount /dev/xvdb datadir
+sudo mount /dev/nvme1n1 datadir
 sudo chown -R ubuntu:ubuntu datadir
 ```
 
