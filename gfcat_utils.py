@@ -215,7 +215,7 @@ def screen_gfcat(eclipses,band='NUV',aper_radius=17,photdir='/Users/cm/GFCAT/pho
         for i,lc in enumerate(lightcurves):
             if any(lc['edge_flags']):
                 continue # skip if there is any data near the detector edge
-            if any(lc['mask_flags'][ix]): #if all(lc['mask_flags'][ix]):
+            if any(lc['mask_flags']): #if all(lc['mask_flags'][ix]):
                 continue  # skip if there is any data covered by the hotspot mask
             ix = np.where((lc['cps']!=0) & (np.isfinite(lc['cps'])))[0]
             if expt['t1'][ix[-1]] - expt['t0'][ix[0]]<500:
