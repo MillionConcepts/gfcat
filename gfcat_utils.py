@@ -132,10 +132,12 @@ def eliminate_dupes(variable_table):
     varix = {'id':[]}
     for lbl in set(labels):
         dbix = np.where(labels==lbl)[0]
+        if any(np.array(variable_table["cps"])[dbix] > 170):
+            return [] # if there is a very bright star in the cluster, dump them all
         if len(dbix)>3: # cluster variables are presumed artifacts
             continue
-        elif len(dbix)>1: # small cluster -- use only the brightest
-            ix = [np.argmax(np.array(variable_table['cps'])[dbix])]
+        elif len(dbix)>1: # small cluster -- use the one with maximum variation
+            ix = [np.argmax(np.array(variable_table['delta_cps'])[dbix])]
             varix['id']+=np.array(variable_table['id'])[dbix][ix].tolist() # Earlier version was missing dbix ---Fixed 220227
         else:
             varix['id']+=np.array(variable_table['id'])[dbix].tolist()
@@ -229,8 +231,10 @@ def screen_gfcat(eclipses,band='NUV',aper_radius=17,photdir='/Users/cm/GFCAT/pho
             sort_ix = np.argsort(lc["cps"][ix])
             if len(np.where(lc["mask_flags"][ix][sort_ix][-10:])[0]) >= 5:
                 continue # more than half of the brightest points are flagged by the hotspot mask
-            if (lc["cps"][ix][sort_ix[1]] > 170):# and (lc["cps"][ix][sort_ix[-1]]>300):
-                continue # skip if the whole visit is >14.5 AB Mag in NUV
+            # The following check has been moved into the cluster analysis because the bright stars
+            # also generate false detections / variables nearby
+            #if (lc["cps"][ix][sort_ix[1]] > 170):# and (lc["cps"][ix][sort_ix[-1]]>300):
+            #    continue # skip if the whole visit is >14.5 AB Mag in NUV
             # The chance of one outlier low point over 50M visits is not small, generates a lot of false positives
             # The chance of two outlier low points within a visit is small.
             # So use the second-lowest point in the visit as the benchmark.
@@ -252,8 +256,10 @@ def screen_gfcat(eclipses,band='NUV',aper_radius=17,photdir='/Users/cm/GFCAT/pho
                 # NOTE: AD is the gold standard variability test, but it's relatively slow, so it
                 #  has been pushed to the end of the screening heuristics
             # Whatever remains is a candidate variable
-            candidate_variables.append({'id':i,'cps':np.median(lc['cps'][ix]),
-                                        'xcenter':lc['xcenter'],'ycenter':lc['ycenter'],})
+            candidate_variables.append({'id':i,
+                                        'cps':np.median(lc['cps'][ix]),
+                                        'xcenter':lc['xcenter'],'ycenter':lc['ycenter'],
+                                        'delta_cps':np.min(lc['cps'][ix])-np.max(lc['cps'][ix])})
         if not len(candidate_variables):
             continue # there are no candidate variables at this point
         # Now screen out variables in clumps, which are very probably due to transient artifacts
