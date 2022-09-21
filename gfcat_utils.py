@@ -6,6 +6,7 @@ import math
 import numpy as np
 from scipy import signal, stats
 from sklearn.cluster import DBSCAN
+from photutils.psf import DBSCANGroup
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 from matplotlib.patches import Rectangle
@@ -37,20 +38,23 @@ def make_wcs(
     wcs.wcs.crval = skypos
     return wcs
 
-def read_image(fn):
+def read_image(fn,hdunum=0):
+    # set hdu=1 for rice compressed data
+    if 'rice' in fn:
+        hdunum = 1
     hdu = pyfits.open(fn)
-    image = hdu[0].data
+    image = hdu[hdunum].data
     exptimes, tranges = [], []
-    for i in range(hdu[0].header["N_FRAME"]):
-        exptimes += [hdu[0].header["EXPT_{i}".format(i=i)]]
+    for i in range(hdu[hdunum].header["N_FRAME"]):
+        exptimes += [hdu[hdunum].header["EXPT_{i}".format(i=i)]]
         tranges += [
-            [hdu[0].header["T0_{i}".format(i=i)], hdu[0].header["T1_{i}".format(i=i)]]
+            [hdu[hdunum].header["T0_{i}".format(i=i)], hdu[hdunum].header["T1_{i}".format(i=i)]]
         ]
-    skypos = (hdu[0].header["CRVAL1"], hdu[0].header["CRVAL2"])
+    skypos = (hdu[hdunum].header["CRVAL1"], hdu[hdunum].header["CRVAL2"])
     wcs = make_wcs(skypos,imsz=np.shape(image))
     try:
-        flagmap = hdu[1].data
-        edgemap = hdu[2].data
+        flagmap = hdu[hdunum+1].data
+        edgemap = hdu[hdunum+2].data
     except IndexError:
         flagmap = None
         edgemap = None
@@ -129,15 +133,23 @@ def eliminate_dupes(variable_table):
     core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
     core_samples_mask[db.core_sample_indices_] = True
     labels = db.labels_
+    print(labels)
     varix = {'id':[]}
     for lbl in set(labels):
         dbix = np.where(labels==lbl)[0]
         if any(np.array(variable_table["cps"])[dbix] > 170):
             return [] # if there is a very bright star in the cluster, dump them all
-        if len(dbix)>3: # cluster variables are presumed artifacts
+        if len(dbix)>=12: # big cluster of variables are presumed artifacts
             continue
         elif len(dbix)>1: # small cluster -- use the one with maximum variation
-            ix = [np.argmax(np.array(variable_table['delta_cps'])[dbix])]
+            xcenters,ycenters = np.array(variable_table['xcenter']),np.array(variable_table['ycenter'])
+            dist = np.sqrt((xcenters[dbix].min()-
+                            xcenters[dbix].max())**2 +
+                           (ycenters[dbix].min()-
+                            ycenters[dbix].max())**2)
+            if dist > 80: # cluster is more than 2 arcminutes across
+                continue
+            ix = [np.argmax(np.abs(variable_table['delta_cps'])[dbix])]
             varix['id']+=np.array(variable_table['id'])[dbix][ix].tolist() # Earlier version was missing dbix ---Fixed 220227
         else:
             varix['id']+=np.array(variable_table['id'])[dbix].tolist()
@@ -165,7 +177,7 @@ def parse_lightcurves(fn:str):
         import warnings
         warnings.simplefilter("ignore")
 
-    expt = parse_exposure_time(fn.replace('photom.csv', 'exptime.csv'))
+    expt = parse_exposure_time(fn.split('photom')[0]+'exptime.csv')
     with open(fn) as data:
         obs = csv.DictReader(data)
         lightcurves = []
@@ -200,17 +212,19 @@ def is_spiky(lc:dict):
     return False
 
 def screen_gfcat(eclipses,band='NUV',aper_radius=17,photdir='/Users/cm/GFCAT/photom',sigma=3,
-                 cps_10p_rolloff={'NUV': 311, 'FUV': 109}, # non-linear regime given by calpaper
+                 cps_10p_rolloff={'NUV': 311, 'FUV': 109,}, # non-linear regime given by calpaper
+                 binsz=30,
                  ):
     variables = {}
     for e in tqdm.tqdm(eclipses):
         edir = f'e{str(e).zfill(5)}'
-        photpath = f'{photdir}/{edir}/{edir}-{band.lower()[0]}d-30s-photom.csv'
+        photpath = f'{photdir}/{edir}/{edir}-{band.lower()[0]}d-{binsz}s-photom-{str(aper_radius).replace(".","_")}.csv'
         if not os.path.exists(photpath):
             continue # there is no photometry file for this eclipse + band
-        expt = parse_exposure_time(photpath.replace('photom.csv', 'exptime.csv'))
-        if np.sum(expt['expt_eff'])<300:
-            continue # skip the whole eclipse if there is not at least 5 min of exposure total
+        expt_fn = photpath.split('photom')[0]+'exptime.csv'
+        expt = parse_exposure_time(expt_fn)
+        if np.sum(expt['expt_eff'])<500:
+            continue # skip the whole eclipse if there is not at least 8 min of exposure total
         lightcurves = parse_lightcurves(photpath)
         candidate_variables = []
         for i,lc in enumerate(lightcurves):
@@ -229,8 +243,8 @@ def screen_gfcat(eclipses,band='NUV',aper_radius=17,photdir='/Users/cm/GFCAT/pho
                 #  be exactly equal to zero. But it's low probability and has no meaningful effect
                 #  on the variability search.
             sort_ix = np.argsort(lc["cps"][ix])
-            if len(np.where(lc["mask_flags"][ix][sort_ix][-10:])[0]) >= 5:
-                continue # more than half of the brightest points are flagged by the hotspot mask
+            #if len(np.where(lc["mask_flags"][ix][sort_ix][-10:])[0]) >= 5:
+            #    continue # more than half of the brightest points are flagged by the hotspot mask
             # The following check has been moved into the cluster analysis because the bright stars
             # also generate false detections / variables nearby
             #if (lc["cps"][ix][sort_ix[1]] > 170):# and (lc["cps"][ix][sort_ix[-1]]>300):
@@ -256,6 +270,7 @@ def screen_gfcat(eclipses,band='NUV',aper_radius=17,photdir='/Users/cm/GFCAT/pho
                 # NOTE: AD is the gold standard variability test, but it's relatively slow, so it
                 #  has been pushed to the end of the screening heuristics
             # Whatever remains is a candidate variable
+            print(i)
             candidate_variables.append({'id':i,
                                         'cps':np.median(lc['cps'][ix]),
                                         'xcenter':lc['xcenter'],'ycenter':lc['ycenter'],
