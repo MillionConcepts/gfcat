@@ -133,7 +133,6 @@ def eliminate_dupes(variable_table):
     core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
     core_samples_mask[db.core_sample_indices_] = True
     labels = db.labels_
-    print(labels)
     varix = {'id':[]}
     for lbl in set(labels):
         dbix = np.where(labels==lbl)[0]
@@ -223,17 +222,20 @@ def screen_gfcat(eclipses,band='NUV',aper_radius=17,photdir='/Users/cm/GFCAT/pho
             continue # there is no photometry file for this eclipse + band
         expt_fn = photpath.split('photom')[0]+'exptime.csv'
         expt = parse_exposure_time(expt_fn)
-        if np.sum(expt['expt_eff'])<500:
-            continue # skip the whole eclipse if there is not at least 8 min of exposure total
+        if np.sum(expt['expt_eff'])<420:
+            print('Short exposure.')
+            continue # skip the whole eclipse if there is not at least 7 min of exposure total
         lightcurves = parse_lightcurves(photpath)
         candidate_variables = []
         for i,lc in enumerate(lightcurves):
+            if not any(lc['cps']>0.5):
+                continue # too dim to be meaningful
             if any(lc['edge_flags']):
                 continue # skip if there is any data near the detector edge
             if any(lc['mask_flags']): #if all(lc['mask_flags'][ix]):
                 continue  # skip if there is any data covered by the hotspot mask
             ix = np.where((lc['cps']!=0) & (np.isfinite(lc['cps'])))[0]
-            if expt['t1'][ix[-1]] - expt['t0'][ix[0]]<500:
+            if expt['t1'][ix[-1]] - expt['t0'][ix[0]]<420:
                 continue # skip if there are not at least 8 min of exposure on target
                 # This duration was chosen to eliminate a relatively high number of false positives
                 # in shorter visits. It is approx. 1/3rd duration of a full MIS-depth visit.
@@ -270,7 +272,6 @@ def screen_gfcat(eclipses,band='NUV',aper_radius=17,photdir='/Users/cm/GFCAT/pho
                 # NOTE: AD is the gold standard variability test, but it's relatively slow, so it
                 #  has been pushed to the end of the screening heuristics
             # Whatever remains is a candidate variable
-            print(i)
             candidate_variables.append({'id':i,
                                         'cps':np.median(lc['cps'][ix]),
                                         'xcenter':lc['xcenter'],'ycenter':lc['ycenter'],
@@ -279,7 +280,7 @@ def screen_gfcat(eclipses,band='NUV',aper_radius=17,photdir='/Users/cm/GFCAT/pho
             continue # there are no candidate variables at this point
         # Now screen out variables in clumps, which are very probably due to transient artifacts
         varix = eliminate_dupes(pd.DataFrame(candidate_variables).to_dict('list'))
-        if len(varix) >= 10:
+        if len(varix) >= 20:
             continue  # This is a cursed eclipse --- too many "variables" --- do not believe its lies
         if len(varix) == 0:
             continue # there are no variables
@@ -292,6 +293,7 @@ def generate_qa_plots(vartable:dict,band='NUV',
                       cleanup=False,
                       boxsz = 200, # pixels margin, so 2x this is the width
                       rerun = False,
+                      depth = 30,
                         ):
     for e in tqdm.tqdm(vartable.keys()):
         if not rerun and all([os.path.exists(f'{plotdir}/e{str(e).zfill(5)}-{band}-{str(i).zfill(4)}.png') for i in vartable[e]]):
@@ -301,71 +303,101 @@ def generate_qa_plots(vartable:dict,band='NUV',
         lightcurves = parse_lightcurves(photpath)
         expt = parse_exposure_time(photpath.replace('photom.csv', 'exptime.csv'))
         cntfilename = f'{photdir}/e{str(e).zfill(5)}/e{str(e).zfill(5)}-{band[0].lower()}d-full.fits.gz'
-        if not os.path.exists(cntfilename):
-            cmd = f'aws s3 cp s3://dream-pool/e{str(e).zfill(5)}/e{str(e).zfill(5)}-{band[0].lower()}d-full.fits.gz {cntfilename} --quiet'
+        movfilename = cntfilename.replace('full',str(depth).zfille(2))
+        if not os.path.exists(movfilename):
+            aws_path = movfilename.replace(f"{photdir}","s3://dream-pool")
+            cmd = f'aws s3 cp {aws_path} {fn} --quiet'
             os.system(cmd)
-            if not os.path.exists(cntfilename):
-                raise FileNotFoundError(f'This file has lightcurves and should definitely exist.\n{cntfilename}')
-        image, flagmap, edgemap, wcs, _, _ = read_image(cntfilename)
-        for i in vartable[e]:
-            lc = lightcurves[i]
+            if not os.path.exists(movfilename):
+                raise FileNotFoundError(f'This eclipse has lightcurves so this image files should definitely exist:\n{movfilename}')
+
+        movmap,flagmap,edgemap,wcs,tranges,exptimes=read_image(movfilename)
+        movmap[np.where(np.isinf(movmap))]=0 # because it pops out with inf values... IDK
+        movmap[np.where(movmap<0)]=0
+
+        for source_ix in vartable[e]:
+            lc = lightcurves[source_ix]
+            assert len(lc['cps'])==np.shape(movmap)[0] # if these don't match then the gif will be out of sync
             imgx, imgy = lc['xcenter'],lc['ycenter'] # the image pixel coordinate of the source
             # define the bounding box for the thumbnail
-            imsz = np.shape(image)
+            imsz = np.shape(movmap[0])
 
-            fig = plt.figure(figsize=(17, 15))
-            G = gridspec.GridSpec(4, 4)
-
-            # make a QA image that is zoomed in
+            # crop on the subframe
             # noting that image coordinates and numpy coordinates are flipped
+            boxsz = 200
             x1, x2, y1, y2 = (max(int(imgy - boxsz),0),
                               min(int(imgy + boxsz),imsz[0]),
                               max(int(imgx - boxsz),0),
                               min(int(imgx + boxsz),imsz[1]))
 
-            ax = fig.add_subplot(G[:3,:2])
-            ax.imshow(ZScaleInterval()(image[x1:x2, y1:y2]), cmap="Greys_r", origin="lower")
-            ax.imshow(1 / edgemap[x1:x2, y1:y2], origin="lower", cmap="Reds_r", alpha=1)
-            ax.imshow(1 / flagmap[x1:x2, y1:y2], origin="lower", cmap="Blues_r", alpha=1)
-            ax.plot(boxsz, boxsz, markersize=30, color='y', lw=10, marker='o', fillstyle='none')  # marker='o')
-            ax.set_xticks([])
-            ax.set_yticks([])
-
-            # make a QA image of the full detector
-            ax = fig.add_subplot(G[:3,2:])
+            # crop on the full frame
             # The cropping is here to handle very wide images created by inappropriate handling
-            # of map projection distortions when initializing the image size during processing;
-            # this has been fixed in the pipeline, but not for the data we have.
+            # of map cos(theta) projection distortions when initializing the image size during processing;
+            # this was fixed in the pipeline that generated the final run of gfcat data.
             x1_,x2_,y1_,y2_ = (max(int(imsz[0]/2-imsz[0]/2),0),
                                min(int(imsz[0]/2+imsz[0]/2),imsz[0]),
                                max(int(imsz[1]/2-imsz[0]/2),0),
                                min(int(imsz[1]/2+imsz[0]/2),imsz[1]))
-            ax.imshow(ZScaleInterval()(image[x1_:x2_,y1_:y2_]), cmap="Greys_r", origin="lower")
-            ax.imshow(1 / edgemap[x1_:x2_,y1_:y2_], origin="lower", cmap="Reds_r", alpha=1)
-            ax.imshow(1 / flagmap[x1_:x2_,y1_:y2_], origin="lower", cmap="Blues_r", alpha=1)
-            rect = Rectangle((y1-y1_, x1-x1_), 2*boxsz, 2*boxsz, linewidth=1, edgecolor='y', facecolor='none')
-            ax.add_patch(rect)
-            #ax.plot(boxsz, boxsz, markersize=30, color='y', lw=10, marker='o', fillstyle='none')  # marker='o')
-            #ax.set_xlim([imgy-1000,imgy+1000])
-            #ax.set_xlim([int(imsz[1]/2-imsz[0]/2),int(imsz[1]/2+imsz[0]/2)])
-            #ax.set_ylim([int(imsz[0]/2-imsz[0]/2),int(imsz[0]/2+imsz[0]/2)])
-            ax.set_xticks([])
-            ax.set_yticks([])
 
+            gs = gridspec.GridSpec(nrows=4, ncols=6)#, height_ratios=[1, 1, 2])
 
-            ax = fig.add_subplot(G[3,:])
-            #ax.set_title(f"{edir} : {var}")
-            ix = np.where(np.isfinite(lc['cps']))[0]
-            ax.errorbar(np.array(expt['t0'])[ix],lc['cps'][ix],yerr=3*lc['cps_err'][ix],fmt='k-')
-            ix = np.where(np.array(lc['mask_flags']))[0]
-            if len(ix):
-                ax.plot(np.array(expt['t0'])[ix],lc['cps'][ix],'ro')
-            ax.set_xticks([])
+            for i,frame in enumerate(movmap): # probably eliminate the first / last frame, which always has lower exposure
+                fig = plt.figure(figsize=(12,9));
+                fig.tight_layout()
+                ax = fig.add_subplot(gs[:3,:3])
+                opacity = (edgemap[i]+flagmap[i])/2
+                # M, N, 3 or M, N, 4
+                ax.imshow(edgemap[i][x1_:x2_,y1_:y2_],origin="lower",cmap="Reds",alpha=opacity[x1_:x2_,y1_:y2_])
+                ax.imshow(flagmap[i][x1_:x2_,y1_:y2_],origin="lower",cmap="Blues",alpha=opacity[x1_:x2_,y1_:y2_])
+                ax.imshow(np.stack([ZScaleInterval()(frame[x1_:x2_,y1_:y2_]),
+                                     ZScaleInterval()(frame[x1_:x2_,y1_:y2_]),
+                                     ZScaleInterval()(frame[x1_:x2_,y1_:y2_]),
+                                     1-opacity[x1_:x2_,y1_:y2_]],axis=2),origin="lower")
+                ax.set_xticks([])
+                ax.set_yticks([])
+                rect = Rectangle((y1-y1_, x1-x1_), 2*boxsz, 2*boxsz, linewidth=1, edgecolor='y', facecolor='none',ls='solid')
+                ax.add_patch(rect)
 
-            plt.tight_layout()
-            plt.savefig(f'{plotdir}/e{str(e).zfill(5)}-{band}-{str(i).zfill(4)}.png')
-            plt.close('all')
-        if cleanup:
+                ax = fig.add_subplot(gs[:3,3:])
+                ax.imshow(edgemap[i][x1:x2,y1:y2],origin="lower",cmap="Reds",alpha=opacity[x1:x2,y1:y2])
+                ax.imshow(flagmap[i][x1:x2,y1:y2],origin="lower",cmap="Blues",alpha=opacity[x1:x2,y1:y2])
+                ax.imshow(np.stack([ZScaleInterval()(frame[x1:x2,y1:y2]),
+                                     ZScaleInterval()(frame[x1:x2,y1:y2]),
+                                     ZScaleInterval()(frame[x1:x2,y1:y2]),
+                                     1-opacity[x1:x2,y1:y2]],axis=2),origin="lower")
+                ax.set_xticks([])
+                ax.set_xticks([])
+                ax.set_yticks([])
+                circ = Circle((boxsz,boxsz),20,linewidth=1,edgecolor='y',facecolor='none',ls='solid')
+                ax.add_patch(circ)
+
+                ax = fig.add_subplot(gs[3:,:])
+                ax.set_xticks([])
+                t = np.arange(len(lc['cps']))
+                cps = lc['cps']
+                cps_err = lc['cps_err']
+                min_i,max_i=np.argmin(cps),np.argmax(cps)
+                ax.vlines(t[i],cps[min_i]-3*cps_err[min_i],
+                               cps[max_i]+3*cps_err[max_i],ls='dotted')
+                ax.scatter(t[i],cps[i],c='y',s=100,marker='o')
+                ax.errorbar(t,cps,yerr=cps_err*3,fmt='k.-')
+
+                plt.savefig(f'{plotdir}/e{e}/e{e}-{b}-30s-{str(i).zfill(2)}-{str(source_ix).zfill(5)}.png',dpi=100)
+                plt.close('all')
+
+            n_frames = np.shape(movmap)[0]
+            # write the animated gif
+            gif_fn = f'{plotdir}/e{e}/e{e}-{b}-30s-{str(source_ix).zfill(5)}.gif'
+            print(f"writing {gif_fn}")
+            with imageio.get_writer(gif_fn, mode='I', fps=6) as writer:
+                for i in np.arange(n_frames):
+                    frame_fn = f'{plotdir}/e{e}/e{e}-{b}-30s-{str(i).zfill(2)}-{str(source_ix).zfill(5)}.png'
+                    image = imageio.imread(frame_fn)
+                    writer.append_data(image)
+                    if cleanup: # remove the png frames
+                        os.remove(frame_fn)
+
+        if cleanup: # remove the local fits data
             os.system(f'rm -rf {photdir}/e{str(e).zfill(5)}/*fits*')
     return
 
