@@ -327,81 +327,23 @@ def screen_variables(fn:str, band='NUV', aper_radius=12.8, sigma=3, binsz=30):
     return varix
 
 
-def screen_gfcat(eclipses,band='NUV',aper_radius=17,photdir='/Users/cm/GFCAT/photom',sigma=3,
+def screen_gfcat(eclipses,band='NUV',aper_radius=12.8,photdir='/Users/cm/GFCAT/photom',sigma=3,
                  cps_10p_rolloff={'NUV': 311, 'FUV': 109,}, # non-linear regime given by calpaper
                  binsz=30,
                  ):
     variables = {}
     for e in tqdm.tqdm(eclipses):
         edir = f'e{str(e).zfill(5)}'
-        photpath = f'{photdir}/{edir}/{edir}-{band.lower()[0]}d-{binsz}s-photom-{str(aper_radius).replace(".","_")}.csv'
+        photpath = f'{photdir}/{edir}/{edir}-{band.lower()[0]}d-{binsz}s-photom.parquet'
         if not os.path.exists(photpath):
+            os.makedirs([f"{photdir}/{edir}/"])
+            cmd = f"aws s3 sync s3://dream-pool/{edir}/ {photdir}/{edir}/. --dryrun --exclude '*{'f' if band == NUV else 'n'}d*' --exclude '*raw6*' --exclude '*fits*'"
+        if not os.path.exists(photpath)
+            os.system(f'rm -rf {photdir}/{edir}/)
             continue # there is no photometry file for this eclipse + band
-        expt_fn = photpath.split('photom')[0]+'exptime.csv'
-        expt = parse_exposure_time(expt_fn)
-        if np.sum(expt['expt'])<500:
-            print('Short exposure.')
-            continue # skip the whole eclipse if there is not at least 8 min of exposure total
-        lightcurves = parse_lightcurves(photpath)
-        candidate_variables = []
-        for i,lc in enumerate(lightcurves):
-            if not any(lc['cps']>0.5):
-                continue # too dim to be meaningful
-            if any(lc['edge_flags']):
-                continue # skip if there is any data near the detector edge
-            if any(lc['mask_flags']): #if all(lc['mask_flags'][ix]):
-                continue  # skip if there is any data covered by the hotspot mask
-            ix = np.where((lc['cps']!=0) & (np.isfinite(lc['cps'])))[0]
-            if expt['t1'][ix[-1]] - expt['t0'][ix[0]]<500:
-                continue # skip if there are not at least 8 min of exposure on target
-                # This duration was chosen to eliminate a relatively high number of false positives
-                # in shorter visits. It is approx. 1/3rd duration of a full MIS-depth visit.
-            if len(ix)/(ix[-1]+1-ix[0])<0.75:
-                continue # skip if more than a quarter of the bins are unobserved
-                # NOTE: It's technically possible to have 30-second integrated flux on a source
-                #  be exactly equal to zero. But it's low probability and has no meaningful effect
-                #  on the variability search.
-            sort_ix = np.argsort(lc["cps"][ix])
-            #if len(np.where(lc["mask_flags"][ix][sort_ix][-10:])[0]) >= 5:
-            #    continue # more than half of the brightest points are flagged by the hotspot mask
-            # The following check has been moved into the cluster analysis because the bright stars
-            # also generate false detections / variables nearby
-            #if (lc["cps"][ix][sort_ix[1]] > 170):# and (lc["cps"][ix][sort_ix[-1]]>300):
-            #    continue # skip if the whole visit is >14.5 AB Mag in NUV
-            # The chance of one outlier low point over 50M visits is not small, generates a lot of false positives
-            # The chance of two outlier low points within a visit is small.
-            # So use the second-lowest point in the visit as the benchmark.
-            second_min = np.sort((lc['cps']+lc['cps_err']*sigma)[ix])[1]
-            outlier_ix = np.where((lc['cps'] - lc['cps_err'] * sigma)[ix] > second_min)[0]
-            if len(outlier_ix) < 3:
-                continue # skip if there are not 3 significant outliers using the dumbest heuristic
-            if is_spiky(lc):
-                continue  # skip: multiple spiky peaks, most likely contaminated by an artifact
-            peak_ix, _ = signal.find_peaks(lc['cps'], prominence=3 * lc['cps_err'], distance=4)
-            if len(peak_ix):
-                if len(peak_ix) > 3:
-                    continue  # skip multiple spiky peaks, most likely contaminated by an artifact
-                # NOTE: This test for spiky behavior is a little slower than I'd like, but workable.
-                #  And it does a more thorough job than the faster / simpler `is_spikey()` above.
-            ad = stats.anderson(lc['cps'][ix])  # standard test of variability
-            if ad.statistic <= ad.critical_values[2]:
-                continue  # failed the anderson-darling test at 5%
-                # NOTE: AD is the gold standard variability test, but it's relatively slow, so it
-                #  has been pushed to the end of the screening heuristics
-            # Whatever remains is a candidate variable
-            candidate_variables.append({'id':i,
-                                        'cps':np.median(lc['cps'][ix]),
-                                        'xcenter':lc['xcenter'],'ycenter':lc['ycenter'],
-                                        'delta_cps':np.min(lc['cps'][ix])-np.max(lc['cps'][ix])})
-        if not len(candidate_variables):
-            continue # there are no candidate variables at this point
-        # Now screen out variables in clumps, which are very probably due to transient artifacts
-        varix = eliminate_dupes(pd.DataFrame(candidate_variables).to_dict('list'))
-        if len(varix) >= 20:
-            continue  # This is a cursed eclipse --- too many "variables" --- do not believe its lies
-        if len(varix) == 0:
-            continue # there are no variables
-        variables[e] = varix
+        variables[e] = screen_variables(photpath, band=band, aper_radius=aper_radius, sigma=sigma, binsz=binsz)
+        if not variables[e]:
+            os.system(f'rm -rf {photdir}/{edir}/)
     return variables
 
 def generate_qa_plots(vartable:dict,band='NUV',

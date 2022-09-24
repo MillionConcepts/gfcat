@@ -1,20 +1,23 @@
 from gfcat_utils import *
 
 photdir = '/home/ubuntu/datadir/photom/' # Relative path to the local disk location of the photometry data
-photdir = "/Users/cm/GFCAT/photom/"
+#photdir = "/Users/cm/GFCAT/photom/"
+band = 'NUV'
 if len(os.listdir(photdir)):
     print(f'There are {len(os.listdir(photdir))} processed eclipses.')
 else:
-    cmd = f"aws s3 sync s3://dream-pool {photdir}. --exclude '*fits*' --exclude '*parquet' --exclude '*12_8.csv' --exclude '*LowExpt' --exclude '*tar.gz' --exclude '*log.csv' --exclude '*random*'"
+    cmd = f"aws s3 sync s3://dream-pool/e23456 {photdir} --dryrun --exclude '*{'f' if band==NUV else 'n'}d*' --exclude '*raw6*' --exclude '*fits*'"
+    #cmd = f"aws s3 sync s3://dream-pool {photdir}. --exclude '*fits*' --exclude '*parquet' --exclude '*12_8.csv' --exclude '*LowExpt' --exclude '*tar.gz' --exclude '*log.csv' --exclude '*random*'"
     os.system(cmd)
 
-wrong_eclipse_file = '/home/ubuntu/gfcat/incorrectly_analyzed_eclipses.txt'
-wrong_eclipse_file = "/Users/cm/GFCAT/gfcat/incorrectly_analyzed_eclipses.txt"
-try:
-    wrong_eclipses = pd.read_csv(wrong_eclipse_file)['eclipse'].values
-    print(f'There are {len(wrong_eclipses)} accidentally processed eclipses.')
-except FileNotFoundError:
-    print('The accidental eclipse file is missing.')
+# The following was corrected as part of the final run of gfcat data.
+#wrong_eclipse_file = '/home/ubuntu/gfcat/incorrectly_analyzed_eclipses.txt'
+#wrong_eclipse_file = "/Users/cm/GFCAT/gfcat/incorrectly_analyzed_eclipses.txt"
+#try:
+#    wrong_eclipses = pd.read_csv(wrong_eclipse_file)['eclipse'].values
+#    print(f'There are {len(wrong_eclipses)} accidentally processed eclipses.')
+#except FileNotFoundError:
+#    print('The accidental eclipse file is missing.')
 
 eclipses = [int(e[1:]) for e in os.listdir(f'{photdir}')]
 eclipses = list(set(eclipses).difference(set(wrong_eclipses)))
