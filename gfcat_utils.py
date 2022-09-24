@@ -329,7 +329,7 @@ def screen_variables(fn:str, band='NUV', aper_radius=12.8, sigma=3, binsz=30):
 
 def screen_gfcat(eclipses:list,band='NUV',aper_radius=12.8,photdir='/Users/cm/GFCAT/photom',sigma=3,
                  cps_10p_rolloff={'NUV': 311, 'FUV': 109,}, # non-linear regime given by calpaper
-                 binsz=30,
+                 binsz=30,cleanup=True,
                  ):
     variables = {}
     for e in tqdm.tqdm(eclipses):
@@ -337,13 +337,13 @@ def screen_gfcat(eclipses:list,band='NUV',aper_radius=12.8,photdir='/Users/cm/GF
         photpath = f'{photdir}/{edir}/{edir}-{binsz}s-photom.parquet'
         if not os.path.exists(photpath):
             os.makedirs(f"{photdir}/{edir}/")
-            cmd = f"aws s3 sync s3://dream-pool/{edir}/ {photdir}/{edir}/. --exclude '*{'f' if band == 'NUV' else 'n'}d*' --exclude '*raw6*' --exclude '*fits*'"
+            cmd = f"aws s3 sync s3://dream-pool/{edir}/ {photdir}/{edir}/. --exclude '*{'f' if band == 'NUV' else 'n'}d*' --exclude '*raw6*' --exclude '*fits*' --exclude '*{binsz}s*'"
             os.system(cmd)
         if not os.path.exists(photpath):
             os.system(f"rm -rf {photdir}/{edir}/")
             continue # there is no photometry file for this eclipse + band
         variables[e] = screen_variables(photpath, band=band, aper_radius=aper_radius, sigma=sigma, binsz=binsz)
-        if not variables[e]:
+        if not variables[e] or cleanup:
             os.system(f"rm -rf {photdir}/{edir}/")
     return variables
 
