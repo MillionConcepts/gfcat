@@ -337,7 +337,7 @@ def screen_gfcat(eclipses:list,band='NUV',aper_radius=12.8,photdir='/Users/cm/GF
         photpath = f'{photdir}/{edir}/{edir}-{band.lower()[0]}d-{binsz}s-photom.parquet'
         if not os.path.exists(photpath):
             os.makedirs(f"{photdir}/{edir}/")
-            cmd = f"aws s3 sync s3://dream-pool/{edir}/ {photdir}/{edir}/. --dryrun --exclude '*{'f' if band == 'NUV' else 'n'}d*' --exclude '*raw6*' --exclude '*fits*'"
+            cmd = f"aws s3 sync s3://dream-pool/{edir}/ {photdir}/{edir}/. --exclude '*{'f' if band == 'NUV' else 'n'}d*' --exclude '*raw6*' --exclude '*fits*'"
         if not os.path.exists(f"{photdir}/{edir}/"):
             os.system(f"rm -rf {photdir}/{edir}/")
             continue # there is no photometry file for this eclipse + band
