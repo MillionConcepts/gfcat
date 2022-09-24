@@ -339,11 +339,11 @@ def screen_gfcat(eclipses,band='NUV',aper_radius=12.8,photdir='/Users/cm/GFCAT/p
             os.makedirs([f"{photdir}/{edir}/"])
             cmd = f"aws s3 sync s3://dream-pool/{edir}/ {photdir}/{edir}/. --dryrun --exclude '*{'f' if band == NUV else 'n'}d*' --exclude '*raw6*' --exclude '*fits*'"
         if not os.path.exists(photpath)
-            os.system(f'rm -rf {photdir}/{edir}/)
+            os.system(f"rm -rf {photdir}/{edir}/")
             continue # there is no photometry file for this eclipse + band
         variables[e] = screen_variables(photpath, band=band, aper_radius=aper_radius, sigma=sigma, binsz=binsz)
         if not variables[e]:
-            os.system(f'rm -rf {photdir}/{edir}/)
+            os.system(f"rm -rf {photdir}/{edir}/")
     return variables
 
 def generate_qa_plots(vartable:dict,band='NUV',
