@@ -267,12 +267,16 @@ def screen_variables(fn:str, band='NUV', aper_radius=12.8, sigma=3, binsz=30):
         print('Short exposure.')
         return []  # skip the whole eclipse if there is not at least 8 min of exposure total
     candidate_variables = []
+    dim,edge,mask=0,0,0
     for i,lc in enumerate(lightcurves):
         if not any(lc['cps'] > 0.5):
+            dim+=1
             continue  # too dim to be meaningful
         if any(lc['edge_flags']):
+            edge+=1
             continue  # skip if there is any data near the detector edge
         if any(lc['mask_flags']):  # if all(lc['mask_flags'][ix]):
+            mask+=1
             continue  # skip if there is any data covered by the hotspot mask
         ix = np.where((lc['cps'] != 0) & (np.isfinite(lc['cps'])))[0]
         if expt['t1'][ix[-1]] - expt['t0'][ix[0]] < 500:
@@ -316,6 +320,7 @@ def screen_variables(fn:str, band='NUV', aper_radius=12.8, sigma=3, binsz=30):
                                     'cps': np.median(lc['cps'][ix]),
                                     'xcenter': lc['xcenter'], 'ycenter': lc['ycenter'],
                                     'delta_cps': np.min(lc['cps'][ix]) - np.max(lc['cps'][ix])})
+    print(dim,edge,mask)
     if not len(candidate_variables):
         return [] # there are no candidate variables at this point
     # Now screen out variables in clumps, which are very probably due to transient artifacts

@@ -1,34 +1,150 @@
-from gfcat_utils import *
+from lightcurve_interface_skeleton import screen_variables, load_lightcurve_records
+from gfcat_utils import read_image
+import os
+import numpy as np
+from matplotlib import gridspec
+import matplotlib.pyplot as plt
+from astropy.visualization import ZScaleInterval
+from matplotlib.patches import Rectangle, Circle
+import imageio.v2 as imageio
 
-photdir = '/home/ubuntu/datadir/photom/' # Relative path to the local disk location of the photometry data
-#photdir = "/Users/cm/GFCAT/photom/"
-band = 'NUV'
-if len(os.listdir(photdir)):
-    print(f'There are {len(os.listdir(photdir))} processed eclipses.')
-else:
-    cmd = f"aws s3 sync s3://dream-pool/e23456 {photdir} --dryrun --exclude '*{'f' if band==NUV else 'n'}d*' --exclude '*raw6*' --exclude '*fits*'"
-    #cmd = f"aws s3 sync s3://dream-pool {photdir}. --exclude '*fits*' --exclude '*parquet' --exclude '*12_8.csv' --exclude '*LowExpt' --exclude '*tar.gz' --exclude '*log.csv' --exclude '*random*'"
-    os.system(cmd)
+def screen_eclipse(eclipse, photdir = '/home/ubuntu/datadir/', band = 'NUV'):
+    estring = f"e{str(eclipse).zfill(5)}"
+    edir = f"{photdir}{estring}"
+    if not os.path.exists(edir):
+        os.makedirs(edir)
 
-# The following was corrected as part of the final run of gfcat data.
-#wrong_eclipse_file = '/home/ubuntu/gfcat/incorrectly_analyzed_eclipses.txt'
-#wrong_eclipse_file = "/Users/cm/GFCAT/gfcat/incorrectly_analyzed_eclipses.txt"
-#try:
-#    wrong_eclipses = pd.read_csv(wrong_eclipse_file)['eclipse'].values
-#    print(f'There are {len(wrong_eclipses)} accidentally processed eclipses.')
-#except FileNotFoundError:
-#    print('The accidental eclipse file is missing.')
+    photfilename = f"{edir}/{estring}-30s-photom.parquet"
+    if not os.path.exists(photfilename):
+        cmd = f"aws s3 cp s3://dream-pool/{estring}/{estring}-30s-photom.parquet {edir}/."
+        os.system(cmd)
 
-eclipses = [int(e[1:]) for e in os.listdir(f'{photdir}')]
-eclipses = list(set(eclipses).difference(set(wrong_eclipses)))
-print(f'There are notionally {len(eclipses)} eclipses in GFCAT.')
+    varix, rejects = screen_variables(f'{edir}/{estring}-30s-photom.parquet')
 
-#eclipses = [34413,29703,13655,29703,] # These eclipses known variables for testing
-# Variable screening takes 1-2 hours depending on available iron
-print('Screening all sources for variable behavior...')
-candidate_variables = screen_gfcat(eclipses[:100],photdir=photdir)
-# QA plot generation takes 6-12 hours, dominated by retrieving full frames from S3
-plotdir = '/home/ubuntu/datadir/plots/'
-plotdir = '/Users/cm/GFCAT/data/plots/'
-print('Generating QA plots of candidate variables...')
-#generate_qa_plots(candidate_variables,photdir=photdir,plotdir=plotdir,cleanup=True,rerun=True)
+    if not len(varix):
+        os.remove(edir)
+        return []
+
+    return varix
+
+def make_qa_image(eclipse, varix, photdir = '/home/ubuntu/datadir/', band = 'NUV',aper_radius=12.8, cleanup=True):
+    e,b = eclipse,band[0].lower()
+    estring = f"e{str(eclipse).zfill(5)}"
+    edir = f"{photdir}{estring}"
+    photfilename = f"{edir}/{estring}-30s-photom.parquet"
+    lightcurves = load_lightcurve_records(photfilename, band, apersize=aper_radius)
+
+    movfilename = f"{edir}/{estring}-{band[0].lower()}d-30s.fits.gz"
+    if not os.path.exists(movfilename):
+        cmd = f"aws s3 cp s3://dream-pool/{estring}/{estring}-{band[0].lower()}d-30s.fits.gz {edir}/."
+        os.system(cmd)
+
+    print(f'Reading {estring} movie file.')
+    movmap, flagmap, edgemap, wcs, tranges, exptimes = read_image(movfilename)
+    movmap[np.where(np.isinf(movmap))] = 0  # because it pops out with inf values... IDK
+    movmap[np.where(movmap < 0)] = 0
+
+    for source_ix in varix:
+        print(f'Processing {source_ix}')
+        lc = lightcurves[source_ix]
+        curve = {band:{'t':np.arange(len(lc['cps'])),
+                        'cps':lc['cps'],
+                        'cps_err':lc['cps_err']}}
+        #if len(lightcurves_fuv):
+        #    curve['FUV'] = {'t':np.arange(len(lightcurves_fuv[source_ix]['cps'])),
+        #                    'cps':lightcurves_fuv[source_ix]['cps'],
+        #                    'cps_err':lightcurves_fuv[source_ix]['cps_err']}
+        min_i, max_i = np.argmin(curve[band]['cps']), np.argmax(curve[band]['cps'])
+
+        assert len(lc['cps']) == np.shape(movmap)[0]  # if these don't match then the gif will be out of sync
+        imgx, imgy = lc['xcenter'], lc['ycenter']  # the image pixel coordinate of the source
+        # define the bounding box for the thumbnail
+        imsz = np.shape(movmap[0])
+
+        # crop on the subframe
+        # noting that image coordinates and numpy coordinates are flipped
+        boxsz = 200
+        x1, x2, y1, y2 = (max(int(imgy - boxsz), 0),
+                          min(int(imgy + boxsz), imsz[0]),
+                          max(int(imgx - boxsz), 0),
+                          min(int(imgx + boxsz), imsz[1]))
+
+        # crop on the full frame
+        # The cropping is here to handle very wide images created by inappropriate handling
+        # of map cos(theta) projection distortions when initializing the image size during processing;
+        # this was fixed in the pipeline that generated the final run of gfcat data.
+        x1_, x2_, y1_, y2_ = (max(int(imsz[0] / 2 - imsz[0] / 2), 0),
+                              min(int(imsz[0] / 2 + imsz[0] / 2), imsz[0]),
+                              max(int(imsz[1] / 2 - imsz[0] / 2), 0),
+                              min(int(imsz[1] / 2 + imsz[0] / 2), imsz[1]))
+
+        gs = gridspec.GridSpec(nrows=4, ncols=6)  # , height_ratios=[1, 1, 2])
+
+        print('Generating frames.')
+        for i, frame in enumerate(movmap):  # probably eliminate the first / last frame, which always has lower exposure
+            fig = plt.figure(figsize=(12, 9));
+            fig.tight_layout()
+            ax = fig.add_subplot(gs[:3, :3])
+            opacity = (edgemap[i] + flagmap[i]) / 2
+            # M, N, 3 or M, N, 4
+            ax.imshow(edgemap[i][x1_:x2_, y1_:y2_], origin="lower", cmap="Reds", alpha=opacity[x1_:x2_, y1_:y2_])
+            ax.imshow(flagmap[i][x1_:x2_, y1_:y2_], origin="lower", cmap="Blues", alpha=opacity[x1_:x2_, y1_:y2_])
+            ax.imshow(np.stack([ZScaleInterval()(frame[x1_:x2_, y1_:y2_]),
+                                ZScaleInterval()(frame[x1_:x2_, y1_:y2_]),
+                                ZScaleInterval()(frame[x1_:x2_, y1_:y2_]),
+                                1 - opacity[x1_:x2_, y1_:y2_]], axis=2), origin="lower")
+            ax.set_xticks([])
+            ax.set_yticks([])
+            rect = Rectangle((y1 - y1_, x1 - x1_), 2 * boxsz, 2 * boxsz, linewidth=1, edgecolor='y', facecolor='none',
+                             ls='solid')
+            ax.add_patch(rect)
+
+            ax = fig.add_subplot(gs[:3, 3:])
+            ax.imshow(edgemap[i][x1:x2, y1:y2], origin="lower", cmap="Reds", alpha=opacity[x1:x2, y1:y2])
+            ax.imshow(flagmap[i][x1:x2, y1:y2], origin="lower", cmap="Blues", alpha=opacity[x1:x2, y1:y2])
+            ax.imshow(np.stack([ZScaleInterval()(frame[x1:x2, y1:y2]),
+                                ZScaleInterval()(frame[x1:x2, y1:y2]),
+                                ZScaleInterval()(frame[x1:x2, y1:y2]),
+                                1 - opacity[x1:x2, y1:y2]], axis=2), origin="lower")
+            ax.set_xticks([])
+            ax.set_xticks([])
+            ax.set_yticks([])
+            circ = Circle((boxsz, boxsz), 20, linewidth=1, edgecolor='y', facecolor='none', ls='solid')
+            ax.add_patch(circ)
+
+            ax = fig.add_subplot(gs[3:, :])
+            ax.set_xticks([])
+            ax.vlines(curve[band]['t'][i], curve[band]['cps'][min_i] - 3 * curve[band]['cps_err'][min_i],
+                      curve[band]['cps'][max_i] + 3 * curve[band]['cps_err'][max_i], ls='dotted')
+            ax.scatter(curve[band]['t'][i], curve[band]['cps'][i], c='y', s=100, marker='o')
+            ax.errorbar(curve[band]['t'], curve[band]['cps'],
+                        yerr=curve[band]['cps_err'] * 3, fmt='k.-',label=band)
+            plt.legend()
+            #if 'FUV' in curve.keys():
+            #    ax.errorbar(curve['FUV']['t'], curve['FUV']['cps'],
+            #                yerr=curve['FUV']['cps_err'] * 3, fmt='b.:', label='FUV',alpha=0.7)
+
+            plt.savefig(f'{edir}/e{e}-{b}-30s-{str(i).zfill(2)}-{str(source_ix).zfill(5)}.png', dpi=100)
+            plt.close('all')
+
+        print('Compiling movie.')
+        n_frames = np.shape(movmap)[0]
+        # write the animated gif
+        gif_fn = f'{edir}/e{e}-{b}-30s-{str(source_ix).zfill(5)}.gif'
+        print(f"writing {gif_fn}")
+        with imageio.get_writer(gif_fn, mode='I', fps=6) as writer:
+            for i in np.arange(n_frames):
+                frame_fn = f'{edir}/e{e}-{b}-30s-{str(i).zfill(2)}-{str(source_ix).zfill(5)}.png'
+                image = imageio.imread(frame_fn)
+                writer.append_data(image)
+                if cleanup:  # remove the png frames
+                    os.remove(frame_fn)
+
+for eclipse in [41726]:
+    varix = screen_eclipse(5024)
+    print(varix)
+    if len(varix):
+        make_qa_image(5024,varix,band='NUV')
+        make_qa_image(5024,varix,band='FUV')
+
+
