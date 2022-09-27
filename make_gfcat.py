@@ -27,12 +27,20 @@ def screen_eclipse(eclipse, photdir = '/home/ubuntu/datadir/', band = 'NUV'):
 
     return varix
 
-def make_qa_image(eclipse, varix, photdir = '/home/ubuntu/datadir/', band = 'NUV',aper_radius=12.8, cleanup=True):
+def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'NUV',aper_radius=12.8, cleanup=True):
     e,b = eclipse,band[0].lower()
     estring = f"e{str(eclipse).zfill(5)}"
     edir = f"{photdir}{estring}"
     photfilename = f"{edir}/{estring}-30s-photom.parquet"
     lightcurves = load_lightcurve_records(photfilename, band, apersize=aper_radius)
+
+    variables = {}
+    for lc in lightcurves:
+        if lc['obj_id'] in obj_ids:
+            variables[lc['obj_id']] = lc
+    for obj_id in obj_ids:
+        if obj_id not in variables.keys():
+            print(f'{obj_id} not found in {eclipse} {band} unflagged lightcurves')
 
     movfilename = f"{edir}/{estring}-{band[0].lower()}d-30s.fits.gz"
     if not os.path.exists(movfilename):
@@ -44,16 +52,12 @@ def make_qa_image(eclipse, varix, photdir = '/home/ubuntu/datadir/', band = 'NUV
     movmap[np.where(np.isinf(movmap))] = 0  # because it pops out with inf values... IDK
     movmap[np.where(movmap < 0)] = 0
 
-    for source_ix in varix:
+    for lc in variables:
+        source_ix = lc['obj_id']
         print(f'Processing {source_ix}')
-        lc = lightcurves[source_ix]
         curve = {band:{'t':np.arange(len(lc['cps'])),
                         'cps':lc['cps'],
                         'cps_err':lc['cps_err']}}
-        #if len(lightcurves_fuv):
-        #    curve['FUV'] = {'t':np.arange(len(lightcurves_fuv[source_ix]['cps'])),
-        #                    'cps':lightcurves_fuv[source_ix]['cps'],
-        #                    'cps_err':lightcurves_fuv[source_ix]['cps_err']}
         min_i, max_i = np.argmin(curve[band]['cps']), np.argmax(curve[band]['cps'])
 
         assert len(lc['cps']) == np.shape(movmap)[0]  # if these don't match then the gif will be out of sync
@@ -120,31 +124,32 @@ def make_qa_image(eclipse, varix, photdir = '/home/ubuntu/datadir/', band = 'NUV
             ax.errorbar(curve[band]['t'], curve[band]['cps'],
                         yerr=curve[band]['cps_err'] * 3, fmt='k.-',label=band)
             plt.legend()
-            #if 'FUV' in curve.keys():
-            #    ax.errorbar(curve['FUV']['t'], curve['FUV']['cps'],
-            #                yerr=curve['FUV']['cps_err'] * 3, fmt='b.:', label='FUV',alpha=0.7)
 
-            plt.savefig(f'{edir}/e{e}-{b}-30s-{str(i).zfill(2)}-{str(source_ix).zfill(5)}.png', dpi=100)
+            plt.savefig(f'{edir}/{estring}-{b}-30s-{str(i).zfill(2)}-{str(source_ix).zfill(5)}.png', dpi=100)
             plt.close('all')
 
         print('Compiling movie.')
         n_frames = np.shape(movmap)[0]
         # write the animated gif
-        gif_fn = f'{edir}/e{e}-{b}-30s-{str(source_ix).zfill(5)}.gif'
+        gif_fn = f'{edir}/{estring}-{b}-30s-{str(source_ix).zfill(5)}.gif'
         print(f"writing {gif_fn}")
         with imageio.get_writer(gif_fn, mode='I', fps=6) as writer:
             for i in np.arange(n_frames):
-                frame_fn = f'{edir}/e{e}-{b}-30s-{str(i).zfill(2)}-{str(source_ix).zfill(5)}.png'
+                frame_fn = f'{edir}/{estring}-{b}-30s-{str(i).zfill(2)}-{str(source_ix).zfill(5)}.png'
                 image = imageio.imread(frame_fn)
                 writer.append_data(image)
                 if cleanup:  # remove the png frames
                     os.remove(frame_fn)
 
+working_directory = '/home/ubuntu/datadir/'
 for eclipse in [41726]:
-    varix = screen_eclipse(5024)
+    varix = screen_eclipse(eclipse, photdir=working_directory)
     print(varix)
     if len(varix):
-        make_qa_image(5024,varix,band='NUV')
-        make_qa_image(5024,varix,band='FUV')
+        %time make_qa_image(eclipse,varix,band='NUV', photdir=working_directory)
+        try:
+            %time make_qa_image(eclipse,varix,band='FUV', photdir=working_directory)
+        except KeyError:
+            pass
 
 

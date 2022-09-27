@@ -123,6 +123,7 @@ def lightcurve_df_to_cps(
     cps_err = np.einsum('i,ji -> ji', 1/exptime, np.sqrt(lightcurves))
     return cps, cps_err
 
+
 def load_lightcurve_records(
     lightcurve_parquet: Pathlike, band: GalexBand = 'NUV', apersize: int = 12.8
 ) -> tuple[list[dict[str, Union[np.ndarray, float, int]]], np.ndarray]:
@@ -235,7 +236,7 @@ def screen_variables(fn:str, band='NUV', aper_radius=12.8, sigma=3, binsz=30):
             continue  # failed the anderson-darling test at 5%
         candidate_variables.append(
             {
-                'id': i, 
+                'id': lc['obj_id'],
                 'cps': np.median(lc['cps'][ix]), 
                 'xcenter': lc['xcenter'], 
                 'ycenter': lc['ycenter'],
