@@ -9,6 +9,7 @@ from matplotlib.patches import Rectangle, Circle
 import imageio.v2 as imageio
 import matplotlib as mpl
 from clize import run
+import sys
 
 def screen_eclipse(eclipse, photdir = '/home/ubuntu/datadir/', band = 'NUV'):
     estring = f"e{str(eclipse).zfill(5)}"
@@ -30,8 +31,10 @@ def screen_eclipse(eclipse, photdir = '/home/ubuntu/datadir/', band = 'NUV'):
     return varix
 
 def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'NUV',aper_radius=12.8, cleanup=True):
-    #mpl.rcParams['image.interpolation'] = 'none'
-    #mpl.rcParams['image.resample'] = False
+    # dangerous --- never do this
+    if not sys.warnoptions:
+        import warnings
+        warnings.simplefilter("ignore")
 
     e,b = eclipse,band[0].lower()
     estring = f"e{str(eclipse).zfill(5)}"
