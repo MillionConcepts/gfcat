@@ -30,8 +30,8 @@ def screen_eclipse(eclipse, photdir = '/home/ubuntu/datadir/', band = 'NUV'):
     return varix
 
 def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'NUV',aper_radius=12.8, cleanup=True):
-    mpl.rcParams['image.interpolation'] = 'none'
-    mpl.rcParams['image.resample'] = False
+    #mpl.rcParams['image.interpolation'] = 'none'
+    #mpl.rcParams['image.resample'] = False
 
     e,b = eclipse,band[0].lower()
     estring = f"e{str(eclipse).zfill(5)}"
@@ -158,20 +158,27 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
                 os.remove(frame_fn)
 
     # remove the local copies of the
-    if cleanup:
-        os.remove(photfilename)
-        os.remove(movfilename)
+    #if cleanup:
+    #    os.remove(photfilename)
+    #    os.remove(movfilename)
 
-def main(eclipse:int):
-    working_directory = '/home/ubuntu/datadir/'
+def main(eclipse:int,photdir = '/home/ubuntu/datadir/'):
+    estring = f"e{str(eclipse).zfill(5)}"
+    edir = f"{photdir}{estring}"
+    print(f'Processing {estring}')
     varix = screen_eclipse(eclipse, photdir=working_directory)
-    print(varix)
     if len(varix):
+        print(f'Variables found {varix}')
         make_qa_image(eclipse,varix,band='NUV', photdir=working_directory)
         try:
             make_qa_image(eclipse,varix,band='FUV', photdir=working_directory)
         except KeyError:
             pass
+    else:
+        print('No variables found')
+
+    cmd = f"aws s3 cp {edir}/*gif s3://dream-pool/{estring}/."
+    print(cmd)
 
 
 # tell clize to handle command line call
