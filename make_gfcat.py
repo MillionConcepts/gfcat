@@ -147,7 +147,7 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
         print(f'Compiling {source_ix} {band} movie.')
         n_frames = np.shape(movmap)[0]
         # write the animated gif
-        gif_fn = f'{edir}/{estring}-{b}-30s-{str(source_ix).zfill(5)}.gif'
+        gif_fn = f'{edir}/{estring}-{str(source_ix).zfill(5)}-{b}-30s.gif'
         print(f"writing {gif_fn}")
         with imageio.get_writer(gif_fn, mode='I', fps=6) as writer:
             for i in np.arange(n_frames):
@@ -159,8 +159,8 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
 
     # remove the local copies of the
     #if cleanup:
-    #    os.remove(photfilename)
-    #    os.remove(movfilename)
+        os.remove(photfilename)
+        os.remove(movfilename)
 
 def main(eclipse:int,photdir = '/home/ubuntu/datadir/'):
     estring = f"e{str(eclipse).zfill(5)}"
