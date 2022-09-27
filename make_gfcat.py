@@ -169,9 +169,9 @@ def main(eclipse:int,photdir = '/home/ubuntu/datadir/'):
     varix = screen_eclipse(eclipse, photdir=working_directory)
     if len(varix):
         print(f'Variables found {varix}')
-        make_qa_image(eclipse,varix,band='NUV', photdir=working_directory)
+        make_qa_image(eclipse,varix,band='NUV', photdir=photdir)
         try:
-            make_qa_image(eclipse,varix,band='FUV', photdir=working_directory)
+            make_qa_image(eclipse,varix,band='FUV', photdir=photdir)
         except KeyError:
             pass
     else:
