@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 from astropy.visualization import ZScaleInterval
 from matplotlib.patches import Rectangle, Circle
 import imageio.v2 as imageio
+import matplotlib as mpl
+from clize import run
 
 def screen_eclipse(eclipse, photdir = '/home/ubuntu/datadir/', band = 'NUV'):
     estring = f"e{str(eclipse).zfill(5)}"
@@ -28,11 +30,22 @@ def screen_eclipse(eclipse, photdir = '/home/ubuntu/datadir/', band = 'NUV'):
     return varix
 
 def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'NUV',aper_radius=12.8, cleanup=True):
+    mpl.rcParams['image.interpolation'] = 'none'
+    mpl.rcParams['image.resample'] = False
+
     e,b = eclipse,band[0].lower()
     estring = f"e{str(eclipse).zfill(5)}"
     edir = f"{photdir}{estring}"
     photfilename = f"{edir}/{estring}-30s-photom.parquet"
-    lightcurves = load_lightcurve_records(photfilename, band, apersize=aper_radius)
+    if not os.path.exists(photfilename):
+        cmd = f"aws s3 cp s3://dream-pool/{estring}/{estring}-30s-photom.parquet {edir}/."
+        os.system(cmd)
+
+    try:
+        lightcurves = load_lightcurve_records(photfilename, band, apersize=aper_radius)
+    except KeyError:
+        print(f'No {band} data available for {estring}.')
+        return
 
     variables = {}
     for lc in lightcurves:
@@ -41,22 +54,23 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
     for obj_id in obj_ids:
         if obj_id not in variables.keys():
             print(f'{obj_id} not found in {eclipse} {band} unflagged lightcurves')
-    if not len(lc)
+    if not len(lc):
         print(f'No matching objects in {estring} {band}')
+        return
 
     movfilename = f"{edir}/{estring}-{band[0].lower()}d-30s.fits.gz"
     if not os.path.exists(movfilename):
         cmd = f"aws s3 cp s3://dream-pool/{estring}/{estring}-{band[0].lower()}d-30s.fits.gz {edir}/."
         os.system(cmd)
 
-    print(f'Reading {estring} movie file.')
+    print(f'Reading {estring} {band} movie file.')
     movmap, flagmap, edgemap, wcs, tranges, exptimes = read_image(movfilename)
     movmap[np.where(np.isinf(movmap))] = 0  # because it pops out with inf values... IDK
     movmap[np.where(movmap < 0)] = 0
 
-    for lc in variables:
-        source_ix = lc['obj_id']
-        print(f'Processing {source_ix}')
+    for source_ix in variables:
+        lc = variables[source_ix]
+        print(f'Generating {source_ix} {band} QA frames.')
         curve = {band:{'t':np.arange(len(lc['cps'])),
                         'cps':lc['cps'],
                         'cps_err':lc['cps_err']}}
@@ -130,7 +144,7 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
             plt.savefig(f'{edir}/{estring}-{b}-30s-{str(i).zfill(2)}-{str(source_ix).zfill(5)}.png', dpi=100)
             plt.close('all')
 
-        print('Compiling movie.')
+        print(f'Compiling {source_ix} {band} movie.')
         n_frames = np.shape(movmap)[0]
         # write the animated gif
         gif_fn = f'{edir}/{estring}-{b}-30s-{str(source_ix).zfill(5)}.gif'
@@ -140,18 +154,26 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
                 frame_fn = f'{edir}/{estring}-{b}-30s-{str(i).zfill(2)}-{str(source_ix).zfill(5)}.png'
                 image = imageio.imread(frame_fn)
                 writer.append_data(image)
-                if cleanup:  # remove the png frames
-                    os.remove(frame_fn)
+                # remove the png frames
+                os.remove(frame_fn)
 
-working_directory = '/home/ubuntu/datadir/'
-for eclipse in [41726]:
+    # remove the local copies of the
+    if cleanup:
+        os.remove(photfilename)
+        os.remove(movfilename)
+
+def main(eclipse:int):
+    working_directory = '/home/ubuntu/datadir/'
     varix = screen_eclipse(eclipse, photdir=working_directory)
     print(varix)
     if len(varix):
-        %time make_qa_image(eclipse,varix,band='NUV', photdir=working_directory)
+        make_qa_image(eclipse,varix,band='NUV', photdir=working_directory)
         try:
-            %time make_qa_image(eclipse,varix,band='FUV', photdir=working_directory)
+            make_qa_image(eclipse,varix,band='FUV', photdir=working_directory)
         except KeyError:
             pass
 
 
+# tell clize to handle command line call
+if __name__ == "__main__":
+    run(main)
