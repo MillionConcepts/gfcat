@@ -36,6 +36,7 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
     e,b = eclipse,band[0].lower()
     estring = f"e{str(eclipse).zfill(5)}"
     edir = f"{photdir}{estring}"
+    print(f'Initialize QA images creation for {estring} {band}')
     photfilename = f"{edir}/{estring}-30s-photom.parquet"
     if not os.path.exists(photfilename):
         cmd = f"aws s3 cp s3://dream-pool/{estring}/{estring}-30s-photom.parquet {edir}/."
@@ -141,7 +142,7 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
                         yerr=curve[band]['cps_err'] * 3, fmt='k.-',label=band)
             plt.legend()
 
-            plt.savefig(f'{edir}/{estring}-{b}-30s-{str(i).zfill(2)}-{str(source_ix).zfill(5)}.png', dpi=100)
+            plt.savefig(f'{edir}/{estring}-{b}-30s-{str(i).zfill(2)}-{str(source_ix).zfill(5)}.jpg', dpi=100)
             plt.close('all')
 
         print(f'Compiling {source_ix} {band} movie.')
@@ -151,7 +152,7 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
         print(f"writing {gif_fn}")
         with imageio.get_writer(gif_fn, mode='I', fps=6) as writer:
             for i in np.arange(n_frames):
-                frame_fn = f'{edir}/{estring}-{b}-30s-{str(i).zfill(2)}-{str(source_ix).zfill(5)}.png'
+                frame_fn = f'{edir}/{estring}-{b}-30s-{str(i).zfill(2)}-{str(source_ix).zfill(5)}.jpg'
                 image = imageio.imread(frame_fn)
                 writer.append_data(image)
                 # remove the png frames
