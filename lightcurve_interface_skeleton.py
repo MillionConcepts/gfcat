@@ -10,6 +10,7 @@ import pyarrow as pa
 import pyarrow.compute as pac
 from pyarrow import parquet
 from scipy import signal, stats
+import sys
 
 from gfcat_utils import eliminate_dupes
 from gPhoton.types import GalexBand, Pathlike
@@ -119,6 +120,10 @@ def load_exptime(
 def lightcurve_df_to_cps(
     lightcurves: np.ndarray, exptime: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray]:
+    # dangerous warning suppression --- never do this!
+    if not sys.warnoptions:
+        import warnings
+        warnings.simplefilter("ignore")
     cps = np.einsum('i,ji -> ji', 1/exptime, lightcurves)
     cps_err = np.einsum('i,ji -> ji', 1/exptime, np.sqrt(lightcurves))
     return cps, cps_err

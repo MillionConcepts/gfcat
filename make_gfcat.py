@@ -9,7 +9,8 @@ from matplotlib.patches import Rectangle, Circle
 import imageio.v2 as imageio
 import matplotlib as mpl
 from clize import run
-import sys
+from astropy.wcs import WCS
+from astropy.coordinates import SkyCoord
 
 def screen_eclipse(eclipse, photdir = '/home/ubuntu/datadir/', band = 'NUV'):
     estring = f"e{str(eclipse).zfill(5)}"
@@ -31,11 +32,6 @@ def screen_eclipse(eclipse, photdir = '/home/ubuntu/datadir/', band = 'NUV'):
     return varix
 
 def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'NUV',aper_radius=12.8, cleanup=True):
-    # dangerous --- never do this
-    if not sys.warnoptions:
-        import warnings
-        warnings.simplefilter("ignore")
-
     e,b = eclipse,band[0].lower()
     estring = f"e{str(eclipse).zfill(5)}"
     edir = f"{photdir}{estring}"
@@ -81,7 +77,12 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
         min_i, max_i = np.argmin(curve[band]['cps']), np.argmax(curve[band]['cps'])
 
         assert len(lc['cps']) == np.shape(movmap)[0]  # if these don't match then the gif will be out of sync
-        imgx, imgy = lc['xcenter'], lc['ycenter']  # the image pixel coordinate of the source
+
+        # get the image pixel coordinates of the source via WCS
+        skypos = SkyCoord(lc['ra'],lc['dec'],unit='deg')
+        imgpos = wcs.world_to_pixel(skypos)
+        imgx,imgy = float(imgpos[0]),float(imgpos[1])
+
         # define the bounding box for the thumbnail
         imsz = np.shape(movmap[0])
 
