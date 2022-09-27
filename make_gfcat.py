@@ -41,6 +41,8 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
     for obj_id in obj_ids:
         if obj_id not in variables.keys():
             print(f'{obj_id} not found in {eclipse} {band} unflagged lightcurves')
+    if not len(lc)
+        print(f'No matching objects in {estring} {band}')
 
     movfilename = f"{edir}/{estring}-{band[0].lower()}d-30s.fits.gz"
     if not os.path.exists(movfilename):
