@@ -79,7 +79,7 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
         assert len(lc['cps']) == np.shape(movmap)[0]  # if these don't match then the gif will be out of sync
 
         # get the image pixel coordinates of the source via WCS
-        imgpos = wcs.wcs_world2pix([[ra,dec]],1) # set the origin to FITS standard
+        imgpos = wcs.wcs_world2pix([[lc['ra'],lc['dec']]],1) # set the origin to FITS standard
         imgx,imgy = imgpos[0]
 
         # define the bounding box for the thumbnail
