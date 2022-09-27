@@ -166,7 +166,7 @@ def main(eclipse:int,photdir = '/home/ubuntu/datadir/'):
     estring = f"e{str(eclipse).zfill(5)}"
     edir = f"{photdir}{estring}"
     print(f'Processing {estring}')
-    varix = screen_eclipse(eclipse, photdir=working_directory)
+    varix = screen_eclipse(eclipse, photdir=photdir)
     if len(varix):
         print(f'Variables found {varix}')
         make_qa_image(eclipse,varix,band='NUV', photdir=photdir)
