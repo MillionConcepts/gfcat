@@ -160,8 +160,8 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
 
     # remove the local copies of the
     #if cleanup:
-        os.remove(photfilename)
-        os.remove(movfilename)
+    os.remove(photfilename)
+    os.remove(movfilename)
 
 def main(eclipse:int,photdir = '/home/ubuntu/datadir/'):
     estring = f"e{str(eclipse).zfill(5)}"
