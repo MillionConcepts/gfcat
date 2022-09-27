@@ -79,9 +79,8 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
         assert len(lc['cps']) == np.shape(movmap)[0]  # if these don't match then the gif will be out of sync
 
         # get the image pixel coordinates of the source via WCS
-        skypos = SkyCoord(lc['ra'],lc['dec'],unit='deg')
-        imgpos = wcs.world_to_pixel(skypos)
-        imgx,imgy = float(imgpos[0]),float(imgpos[1])
+        imgpos = wcs.wcs_world2pix([[ra,dec]],1) # set the origin to FITS standard
+        imgx,imgy = imgpos[0]
 
         # define the bounding box for the thumbnail
         imsz = np.shape(movmap[0])
@@ -97,7 +96,8 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
         # crop on the full frame
         # The cropping is here to handle very wide images created by inappropriate handling
         # of map cos(theta) projection distortions when initializing the image size during processing;
-        # this was fixed in the pipeline that generated the final run of gfcat data.
+        # this was fixed in the pipeline that generated the final run of gfcat data, so it should just
+        # be returning the full image dimensions now.
         x1_, x2_, y1_, y2_ = (max(int(imsz[0] / 2 - imsz[0] / 2), 0),
                               min(int(imsz[0] / 2 + imsz[0] / 2), imsz[0]),
                               max(int(imsz[1] / 2 - imsz[0] / 2), 0),
