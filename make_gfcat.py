@@ -122,7 +122,7 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
             #                    ZScaleInterval()(frame[x1_:x2_, y1_:y2_]),
             #                    #1 - opacity[x1_:x2_, y1_:y2_]],
             #                    axis=2), origin="lower")
-            ax.imshow(ZScaleInterval()frame[x1_:x2_, y1_:y2_],origin="lower")
+            ax.imshow(ZScaleInterval()(frame[x1_:x2_, y1_:y2_]),origin="lower")
             ax.set_xticks([])
             ax.set_yticks([])
             rect = Rectangle((y1 - y1_, x1 - x1_), 2 * boxsz, 2 * boxsz, linewidth=1, edgecolor='y', facecolor='none',
@@ -137,7 +137,7 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
             #                    ZScaleInterval()(frame[x1:x2, y1:y2]),
             #                    #1 - opacity[x1:x2, y1:y2]],
             #                    axis=2), origin="lower")
-            ax.imshow(ZScaleInterval()frame[x1:x2, y1:y2],origin="lower")
+            ax.imshow(ZScaleInterval()(frame[x1:x2, y1:y2]),origin="lower")
             ax.set_xticks([])
             ax.set_xticks([])
             ax.set_yticks([])
