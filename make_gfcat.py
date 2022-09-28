@@ -80,7 +80,7 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
 
         # get the image pixel coordinates of the source via WCS
         imgpos = wcs.wcs_world2pix([[lc['ra'],lc['dec']]],1) # set the origin to FITS standard
-        imgx,imgy = imgpos[0]
+        imgy,imgx = imgpos[0]
 
         # define the bounding box for the thumbnail
         imsz = np.shape(movmap[0])
