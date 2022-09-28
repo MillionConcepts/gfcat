@@ -73,7 +73,7 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
 
     for source_ix in variables.keys():
         lc = variables[source_ix]
-        print(f'Generating {source_ix} {band} QA frames.')
+        print(f'Initializing {source_ix} {band} QA frames.')
         curve = {band:{'t':np.arange(len(lc['cps'])),
                         'cps':lc['cps'],
                         'cps_err':lc['cps_err']}}
@@ -108,7 +108,7 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
 
         gs = gridspec.GridSpec(nrows=4, ncols=6)  # , height_ratios=[1, 1, 2])
 
-        print('Generating frames.')
+        print(f'Generating {source_ix} {band} QA frames.')
         for i, frame in enumerate(movmap):  # probably eliminate the first / last frame, which always has lower exposure
             fig = plt.figure(figsize=(12, 9));
             fig.tight_layout()
@@ -122,7 +122,7 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
             #                    ZScaleInterval()(frame[x1_:x2_, y1_:y2_]),
             #                    #1 - opacity[x1_:x2_, y1_:y2_]],
             #                    axis=2), origin="lower")
-            ax.imshow(ZScaleInterval()(frame[x1_:x2_, y1_:y2_]),origin="lower")
+            ax.imshow(ZScaleInterval()(frame[x1_:x2_, y1_:y2_]),origin="lower",cmap="Greys_r")
             ax.set_xticks([])
             ax.set_yticks([])
             rect = Rectangle((y1 - y1_, x1 - x1_), 2 * boxsz, 2 * boxsz, linewidth=1, edgecolor='y', facecolor='none',
@@ -137,7 +137,7 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
             #                    ZScaleInterval()(frame[x1:x2, y1:y2]),
             #                    #1 - opacity[x1:x2, y1:y2]],
             #                    axis=2), origin="lower")
-            ax.imshow(ZScaleInterval()(frame[x1:x2, y1:y2]),origin="lower")
+            ax.imshow(ZScaleInterval()(frame[x1:x2, y1:y2]),origin="lower",cmap="Greys_r")
             ax.set_xticks([])
             ax.set_xticks([])
             ax.set_yticks([])
