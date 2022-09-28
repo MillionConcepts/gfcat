@@ -64,7 +64,7 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
         os.system(cmd)
 
     print(f'Reading {estring} {band} movie file.')
-    movmap, flagmap, edgemap, wcs, tranges, exptimes = read_image(movfilename)
+    movmap, _, _, wcs, tranges, exptimes = read_image(movfilename)
     # The WCS in the movie files incorrectly uses the number of frames as an image dimension. Hack fix it here.
     wcs.wcs.crpix[0] = np.shape(movmap)[2]/2 + 0.5
     wcs.wcs.crpix[1] = np.shape(movmap)[1]/2 + 0.5
@@ -83,7 +83,7 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
 
         # get the image pixel coordinates of the source via WCS
         imgpos = wcs.wcs_world2pix([[lc['ra'],lc['dec']]],1) # set the origin to FITS standard
-        imgy,imgx = imgpos[0]
+        imgx,imgy = imgpos[0]
 
         # define the bounding box for the thumbnail
         imsz = np.shape(movmap[0])
@@ -113,14 +113,15 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
             fig = plt.figure(figsize=(12, 9));
             fig.tight_layout()
             ax = fig.add_subplot(gs[:3, :3])
-            opacity = (edgemap[i] + flagmap[i]) / 2
+            #opacity = (edgemap[i] + flagmap[i]) / 2
             # M, N, 3 or M, N, 4
-            ax.imshow(edgemap[i][x1_:x2_, y1_:y2_], origin="lower", cmap="Reds", alpha=opacity[x1_:x2_, y1_:y2_])
-            ax.imshow(flagmap[i][x1_:x2_, y1_:y2_], origin="lower", cmap="Blues", alpha=opacity[x1_:x2_, y1_:y2_])
+            #ax.imshow(edgemap[i][x1_:x2_, y1_:y2_], origin="lower", cmap="Reds", alpha=opacity[x1_:x2_, y1_:y2_])
+            #ax.imshow(flagmap[i][x1_:x2_, y1_:y2_], origin="lower", cmap="Blues", alpha=opacity[x1_:x2_, y1_:y2_])
             ax.imshow(np.stack([ZScaleInterval()(frame[x1_:x2_, y1_:y2_]),
                                 ZScaleInterval()(frame[x1_:x2_, y1_:y2_]),
                                 ZScaleInterval()(frame[x1_:x2_, y1_:y2_]),
-                                1 - opacity[x1_:x2_, y1_:y2_]], axis=2), origin="lower")
+                                #1 - opacity[x1_:x2_, y1_:y2_]], axis=2)
+                                origin="lower")
             ax.set_xticks([])
             ax.set_yticks([])
             rect = Rectangle((y1 - y1_, x1 - x1_), 2 * boxsz, 2 * boxsz, linewidth=1, edgecolor='y', facecolor='none',
@@ -128,12 +129,13 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
             ax.add_patch(rect)
 
             ax = fig.add_subplot(gs[:3, 3:])
-            ax.imshow(edgemap[i][x1:x2, y1:y2], origin="lower", cmap="Reds", alpha=opacity[x1:x2, y1:y2])
-            ax.imshow(flagmap[i][x1:x2, y1:y2], origin="lower", cmap="Blues", alpha=opacity[x1:x2, y1:y2])
+            #ax.imshow(edgemap[i][x1:x2, y1:y2], origin="lower", cmap="Reds", alpha=opacity[x1:x2, y1:y2])
+            #ax.imshow(flagmap[i][x1:x2, y1:y2], origin="lower", cmap="Blues", alpha=opacity[x1:x2, y1:y2])
             ax.imshow(np.stack([ZScaleInterval()(frame[x1:x2, y1:y2]),
                                 ZScaleInterval()(frame[x1:x2, y1:y2]),
                                 ZScaleInterval()(frame[x1:x2, y1:y2]),
-                                1 - opacity[x1:x2, y1:y2]], axis=2), origin="lower")
+                                #1 - opacity[x1:x2, y1:y2]],
+                                axis=2), origin="lower")
             ax.set_xticks([])
             ax.set_xticks([])
             ax.set_yticks([])
