@@ -65,10 +65,13 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
 
     print(f'Reading {estring} {band} movie file.')
     movmap, flagmap, edgemap, wcs, tranges, exptimes = read_image(movfilename)
+    # The WCS in the movie files incorrectly uses the number of frames as an image dimension. Hack fix it here.
+    wcs.wcs.crpix[0] = np.shape(movmap)[2]/2 + 0.5
+    wcs.wcs.crpix[1] = np.shape(movmap)[1]/2 + 0.5
     movmap[np.where(np.isinf(movmap))] = 0  # because it pops out with inf values... IDK
     movmap[np.where(movmap < 0)] = 0
 
-    for source_ix in variables:
+    for source_ix in variables.keys():
         lc = variables[source_ix]
         print(f'Generating {source_ix} {band} QA frames.')
         curve = {band:{'t':np.arange(len(lc['cps'])),
@@ -80,7 +83,9 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
 
         # get the image pixel coordinates of the source via WCS
         imgpos = wcs.wcs_world2pix([[lc['ra'],lc['dec']]],1) # set the origin to FITS standard
+        print(lc['xcenter',lc['ycenter']])
         imgy,imgx = imgpos[0]
+        print(imgx,imgy)
 
         # define the bounding box for the thumbnail
         imsz = np.shape(movmap[0])
