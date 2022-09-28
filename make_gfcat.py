@@ -117,11 +117,12 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
             # M, N, 3 or M, N, 4
             #ax.imshow(edgemap[i][x1_:x2_, y1_:y2_], origin="lower", cmap="Reds", alpha=opacity[x1_:x2_, y1_:y2_])
             #ax.imshow(flagmap[i][x1_:x2_, y1_:y2_], origin="lower", cmap="Blues", alpha=opacity[x1_:x2_, y1_:y2_])
-            ax.imshow(np.stack([ZScaleInterval()(frame[x1_:x2_, y1_:y2_]),
-                                ZScaleInterval()(frame[x1_:x2_, y1_:y2_]),
-                                ZScaleInterval()(frame[x1_:x2_, y1_:y2_]),
-                                #1 - opacity[x1_:x2_, y1_:y2_]], axis=2)
-                                origin="lower")
+            #ax.imshow(np.stack([ZScaleInterval()(frame[x1_:x2_, y1_:y2_]),
+            #                    ZScaleInterval()(frame[x1_:x2_, y1_:y2_]),
+            #                    ZScaleInterval()(frame[x1_:x2_, y1_:y2_]),
+            #                    #1 - opacity[x1_:x2_, y1_:y2_]],
+            #                    axis=2), origin="lower")
+            ax.imshow(ZScaleInterval()frame[x1_:x2_, y1_:y2_],origin="lower")
             ax.set_xticks([])
             ax.set_yticks([])
             rect = Rectangle((y1 - y1_, x1 - x1_), 2 * boxsz, 2 * boxsz, linewidth=1, edgecolor='y', facecolor='none',
@@ -131,11 +132,12 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
             ax = fig.add_subplot(gs[:3, 3:])
             #ax.imshow(edgemap[i][x1:x2, y1:y2], origin="lower", cmap="Reds", alpha=opacity[x1:x2, y1:y2])
             #ax.imshow(flagmap[i][x1:x2, y1:y2], origin="lower", cmap="Blues", alpha=opacity[x1:x2, y1:y2])
-            ax.imshow(np.stack([ZScaleInterval()(frame[x1:x2, y1:y2]),
-                                ZScaleInterval()(frame[x1:x2, y1:y2]),
-                                ZScaleInterval()(frame[x1:x2, y1:y2]),
-                                #1 - opacity[x1:x2, y1:y2]],
-                                axis=2), origin="lower")
+            #ax.imshow(np.stack([ZScaleInterval()(frame[x1:x2, y1:y2]),
+            #                    ZScaleInterval()(frame[x1:x2, y1:y2]),
+            #                    ZScaleInterval()(frame[x1:x2, y1:y2]),
+            #                    #1 - opacity[x1:x2, y1:y2]],
+            #                    axis=2), origin="lower")
+            ax.imshow(ZScaleInterval()frame[x1:x2, y1:y2],origin="lower")
             ax.set_xticks([])
             ax.set_xticks([])
             ax.set_yticks([])
