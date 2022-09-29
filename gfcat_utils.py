@@ -32,6 +32,7 @@ def make_wcs(
     pixsz=0.000416666666666667,  # Same as the GALEX intensity maps
     imsz=[3200, 3200],  # Same as the GALEX intensity maps...
     ):
+    assert len(imsz)==2
     wcs = pywcs.WCS(naxis=2)
     wcs.wcs.cdelt = np.array([-pixsz, pixsz])
     wcs.wcs.ctype = ["RA---TAN", "DEC--TAN"]
@@ -52,7 +53,7 @@ def read_image(fn,hdunum=0):
             [hdu[hdunum].header["T0_{i}".format(i=i)], hdu[hdunum].header["T1_{i}".format(i=i)]]
         ]
     skypos = (hdu[hdunum].header["CRVAL1"], hdu[hdunum].header["CRVAL2"])
-    wcs = make_wcs(skypos,imsz=np.shape(image))
+    wcs = make_wcs(skypos,imsz=np.shape(image)[-2:])
     try:
         flagmap = hdu[hdunum+1].data
         edgemap = hdu[hdunum+2].data

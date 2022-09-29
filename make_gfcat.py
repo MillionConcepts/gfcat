@@ -1,5 +1,5 @@
 from lightcurve_interface_skeleton import screen_variables, load_lightcurve_records
-from gfcat_utils import read_image
+from gfcat_utils import read_image, parse_exposure_time
 import os
 import numpy as np
 from matplotlib import gridspec
@@ -46,6 +46,7 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
     except KeyError:
         print(f'No {band} data available for {estring}.')
         return
+    expt = parse_exposure_time(photfilename)
 
     variables = {}
     for lc in lightcurves:
@@ -74,9 +75,9 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
     for source_ix in variables.keys():
         lc = variables[source_ix]
         print(f'Initializing {source_ix} {band} QA frames.')
-        curve = {band:{'t':np.arange(len(lc['cps'])),
-                        'cps':lc['cps'],
-                        'cps_err':lc['cps_err']}}
+        curve = {band:{'t':expt['t0'],
+                       'cps':lc['cps'],
+                       'cps_err':lc['cps_err']}}
         min_i, max_i = np.argmin(curve[band]['cps']), np.argmax(curve[band]['cps'])
 
         assert len(lc['cps']) == np.shape(movmap)[0]  # if these don't match then the gif will be out of sync
@@ -113,15 +114,6 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
             fig = plt.figure(figsize=(12, 9));
             fig.tight_layout()
             ax = fig.add_subplot(gs[:3, :3])
-            #opacity = (edgemap[i] + flagmap[i]) / 2
-            # M, N, 3 or M, N, 4
-            #ax.imshow(edgemap[i][x1_:x2_, y1_:y2_], origin="lower", cmap="Reds", alpha=opacity[x1_:x2_, y1_:y2_])
-            #ax.imshow(flagmap[i][x1_:x2_, y1_:y2_], origin="lower", cmap="Blues", alpha=opacity[x1_:x2_, y1_:y2_])
-            #ax.imshow(np.stack([ZScaleInterval()(frame[x1_:x2_, y1_:y2_]),
-            #                    ZScaleInterval()(frame[x1_:x2_, y1_:y2_]),
-            #                    ZScaleInterval()(frame[x1_:x2_, y1_:y2_]),
-            #                    #1 - opacity[x1_:x2_, y1_:y2_]],
-            #                    axis=2), origin="lower")
             ax.imshow(ZScaleInterval()(frame[x1_:x2_, y1_:y2_]),origin="lower",cmap="Greys_r")
             ax.set_xticks([])
             ax.set_yticks([])
@@ -130,13 +122,6 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
             ax.add_patch(rect)
 
             ax = fig.add_subplot(gs[:3, 3:])
-            #ax.imshow(edgemap[i][x1:x2, y1:y2], origin="lower", cmap="Reds", alpha=opacity[x1:x2, y1:y2])
-            #ax.imshow(flagmap[i][x1:x2, y1:y2], origin="lower", cmap="Blues", alpha=opacity[x1:x2, y1:y2])
-            #ax.imshow(np.stack([ZScaleInterval()(frame[x1:x2, y1:y2]),
-            #                    ZScaleInterval()(frame[x1:x2, y1:y2]),
-            #                    ZScaleInterval()(frame[x1:x2, y1:y2]),
-            #                    #1 - opacity[x1:x2, y1:y2]],
-            #                    axis=2), origin="lower")
             ax.imshow(ZScaleInterval()(frame[x1:x2, y1:y2]),origin="lower",cmap="Greys_r")
             ax.set_xticks([])
             ax.set_xticks([])
@@ -145,12 +130,13 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
             ax.add_patch(circ)
 
             ax = fig.add_subplot(gs[3:, :])
-            ax.set_xticks([])
             ax.vlines(curve[band]['t'][i], curve[band]['cps'][min_i] - 3 * curve[band]['cps_err'][min_i],
                       curve[band]['cps'][max_i] + 3 * curve[band]['cps_err'][max_i], ls='dotted')
             ax.scatter(curve[band]['t'][i], curve[band]['cps'][i], c='y', s=100, marker='o')
             ax.errorbar(curve[band]['t'], curve[band]['cps'],
                         yerr=curve[band]['cps_err'] * 3, fmt='k.-',label=band)
+            ax.set_xlimit([curve[band]['t'].min()-30,curve[band]['t'].max()+60])
+            ax.set_xticks([])
             plt.legend()
 
             plt.savefig(f'{edir}/{estring}-{b}-30s-{str(i).zfill(2)}-{str(source_ix).zfill(5)}.jpg', dpi=100)
@@ -174,20 +160,22 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
     os.remove(photfilename)
     os.remove(movfilename)
 
-def main(eclipse:int,photdir = '/home/ubuntu/datadir/'):
+def main(eclipse:int,photdir = '/home/ubuntu/datadir/', make_qa_images=True):
     estring = f"e{str(eclipse).zfill(5)}"
     edir = f"{photdir}{estring}"
     print(f'Processing {estring}')
     varix = screen_eclipse(eclipse, photdir=photdir)
     if len(varix):
         print(f'Variables found {varix}')
+    else:
+        print('No variables found')
+
+    if len(varix) and make_qa_images:
         make_qa_image(eclipse,varix,band='NUV', photdir=photdir)
         try:
             make_qa_image(eclipse,varix,band='FUV', photdir=photdir)
         except KeyError:
             pass
-    else:
-        print('No variables found')
 
     cmd = f"aws s3 cp {edir}/*gif s3://dream-pool/{estring}/."
     print(cmd)

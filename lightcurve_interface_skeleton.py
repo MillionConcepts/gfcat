@@ -164,7 +164,11 @@ def is_spiky(lc: dict):
     return False
 
 
-def eliminate_dupes(variable_table, rejects):
+def eliminate_dupes(variable_table, rejects,
+                    max_cluster_count=30, # maximum number of sources in a variable cluster to call it fake
+                    max_cluster_extent=80, # maximum extent of a cluster in pixels to call it fake
+                    max_countrate=170, # maximum cps to call it too bright
+                    ):
     # Run a spatial clustering algorithm and consider variables within 1 arcmin
     #  of each other to be most likely the same source and combine them, choosing
     #  the brightest of the sources as the primary
@@ -176,11 +180,11 @@ def eliminate_dupes(variable_table, rejects):
     varix = {'id': []}
     for lbl in set(labels):
         dbix = np.where(labels==lbl)[0]
-        if any(np.array(variable_table["cps"])[dbix] > 170):
+        if any(np.array(variable_table["cps"])[dbix] > max_countrate):
             for ix in dbix:
                 rejects[variable_table['id'][ix]] = 'too bright (or in cluster w/too bright)'
             continue # if there is a very bright star in the cluster, dump them all
-        if len(dbix)>=12: # big cluster of variables are presumed artifacts
+        if len(dbix)>=max_cluster_count: # big cluster of variables are presumed artifacts
             for ix in dbix:
                 rejects[variable_table['id'][ix]] = 'deduped: cluster size > 12'
             continue
@@ -190,7 +194,7 @@ def eliminate_dupes(variable_table, rejects):
                             xcenters[dbix].max())**2 +
                            (ycenters[dbix].min()-
                             ycenters[dbix].max())**2)
-            if dist > 80: # cluster is more than 2 arcminutes across
+            if dist > max_cluster_extent: # cluster is more than 2 arcminutes across
                 for ix in dbix:
                     rejects[variable_table['id'][ix]] = 'deduped: cluster > 2 arcmin'
                 continue
