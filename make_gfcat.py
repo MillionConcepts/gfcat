@@ -11,6 +11,7 @@ import matplotlib as mpl
 from clize import run
 from astropy.wcs import WCS
 from astropy.coordinates import SkyCoord
+import shutil
 
 def screen_eclipse(eclipse, photdir = '/home/ubuntu/datadir/', band = 'NUV'):
     estring = f"e{str(eclipse).zfill(5)}"
@@ -26,7 +27,7 @@ def screen_eclipse(eclipse, photdir = '/home/ubuntu/datadir/', band = 'NUV'):
     varix, rejects = screen_variables(f'{edir}/{estring}-30s-photom.parquet')
 
     if not len(varix):
-        os.remove(edir)
+        shutil.rmtree(edir)
         return []
 
     return varix
@@ -135,7 +136,7 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
             ax.scatter(curve[band]['t'][i], curve[band]['cps'][i], c='y', s=100, marker='o')
             ax.errorbar(curve[band]['t'], curve[band]['cps'],
                         yerr=curve[band]['cps_err'] * 3, fmt='k.-',label=band)
-            ax.set_xlimit([curve[band]['t'].min()-30,curve[band]['t'].max()+60])
+            ax.set_xlim([curve[band]['t'].min()-30,curve[band]['t'].max()+60])
             ax.set_xticks([])
             plt.legend()
 
