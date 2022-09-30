@@ -117,13 +117,21 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
         print(f'Generating {source_ix} {band} QA image.')
         fig = plt.figure(figsize=(12, 9));
         fig.tight_layout()
-        ax = fig.add_subplot(gs[:3, :])
+        ax = fig.add_subplot(gs[:3, :3])
         ax.imshow(ZScaleInterval()(imgmap[x1_:x2_, y1_:y2_]), origin="lower", cmap="Greys_r")
         ax.set_xticks([])
         ax.set_yticks([])
         rect = Rectangle((y1 - y1_, x1 - x1_), 2 * boxsz, 2 * boxsz, linewidth=1, edgecolor='y', facecolor='none',
                          ls='solid')
         ax.add_patch(rect)
+
+        ax = fig.add_subplot(gs[:3, 3:])
+        ax.imshow(ZScaleInterval()(imgmap[x1:x2, y1:y2]), origin="lower", cmap="Greys_r")
+        ax.set_xticks([])
+        ax.set_xticks([])
+        ax.set_yticks([])
+        circ = Circle((boxsz, boxsz), 20, linewidth=1, edgecolor='y', facecolor='none', ls='solid')
+        ax.add_patch(circ)
 
         ax = fig.add_subplot(gs[3:, :])
         ax.errorbar(curve[band]['t'], curve[band]['cps'],
