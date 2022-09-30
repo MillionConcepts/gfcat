@@ -194,7 +194,7 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
     #if cleanup:
     os.remove(photfilename)
     os.remove(imgfilename)
-    if mode=="prescreen":
+    if step=="prescreen":
         cmd = f"aws s3 cp {edir}/*jpg s3://dream-pool/{estring}/."
     else:
         cmd = f"aws s3 cp {edir}/*gif s3://dream-pool/{estring}/."
