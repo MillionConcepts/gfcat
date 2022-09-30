@@ -32,7 +32,8 @@ def screen_eclipse(eclipse, photdir = '/home/ubuntu/datadir/', band = 'NUV'):
 
     return varix
 
-def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'NUV',aper_radius=12.8, cleanup=True):
+def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
+                  photdir = '/home/ubuntu/datadir/', band = 'NUV',aper_radius=12.8, cleanup=True):
     e,b = eclipse,band[0].lower()
     estring = f"e{str(eclipse).zfill(5)}"
     edir = f"{photdir}{estring}"
@@ -60,18 +61,18 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
         print(f'No matching objects in {estring} {band}')
         return
 
-    movfilename = f"{edir}/{estring}-{band[0].lower()}d-30s.fits.gz"
-    if not os.path.exists(movfilename):
-        cmd = f"aws s3 cp s3://dream-pool/{estring}/{estring}-{band[0].lower()}d-30s.fits.gz {edir}/."
+    depth = 'full' if step=='prescreen' else '30s'
+    imgfilename = f"{edir}/{estring}-{band[0].lower()}d-{depth}.fits.gz"
+    if not os.path.exists(imgfilename):
+        cmd = f"aws s3 cp s3://dream-pool/{estring}/{estring}-{band[0].lower()}d-{depth}.fits.gz {edir}/."
         os.system(cmd)
-
     print(f'Reading {estring} {band} movie file.')
-    movmap, _, _, wcs, tranges, exptimes = read_image(movfilename)
+    imgmap, _, _, wcs, tranges, exptimes = read_image(movfilename)
     # The WCS in the movie files incorrectly uses the number of frames as an image dimension. Hack fix it here.
-    wcs.wcs.crpix[0] = np.shape(movmap)[2]/2 + 0.5
-    wcs.wcs.crpix[1] = np.shape(movmap)[1]/2 + 0.5
-    movmap[np.where(np.isinf(movmap))] = 0  # because it pops out with inf values... IDK
-    movmap[np.where(movmap < 0)] = 0
+    wcs.wcs.crpix[0] = np.shape(imgmap)[2]/2 + 0.5
+    wcs.wcs.crpix[1] = np.shape(imgmap)[1]/2 + 0.5
+    imgmap[np.where(np.isinf(imgmap))] = 0  # because it pops out with inf values... IDK
+    imgmap[np.where(imgmap < 0)] = 0
 
     for source_ix in variables.keys():
         lc = variables[source_ix]
@@ -81,14 +82,14 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
                        'cps_err':lc['cps_err']}}
         min_i, max_i = np.argmin(curve[band]['cps']), np.argmax(curve[band]['cps'])
 
-        assert len(lc['cps']) == np.shape(movmap)[0]  # if these don't match then the gif will be out of sync
+        assert len(lc['cps']) == np.shape(imgmap)[0]  # if these don't match then the gif will be out of sync
 
         # get the image pixel coordinates of the source via WCS
         imgpos = wcs.wcs_world2pix([[lc['ra'],lc['dec']]],1) # set the origin to FITS standard
         imgx,imgy = imgpos[0]
 
         # define the bounding box for the thumbnail
-        imsz = np.shape(movmap[0])
+        imsz = np.shape(imgmap[0])
 
         # crop on the subframe
         # noting that image coordinates and numpy coordinates are flipped
@@ -108,53 +109,79 @@ def make_qa_image(eclipse, obj_ids, photdir = '/home/ubuntu/datadir/', band = 'N
                               max(int(imsz[1] / 2 - imsz[0] / 2), 0),
                               min(int(imsz[1] / 2 + imsz[0] / 2), imsz[1]))
 
-        gs = gridspec.GridSpec(nrows=4, ncols=6)  # , height_ratios=[1, 1, 2])
+        gs = gridspec.GridSpec(nrows=3, ncols=6)  # , height_ratios=[1, 1, 2])
 
-        print(f'Generating {source_ix} {band} QA frames.')
-        for i, frame in enumerate(movmap):  # probably eliminate the first / last frame, which always has lower exposure
-            fig = plt.figure(figsize=(12, 9));
-            fig.tight_layout()
-            ax = fig.add_subplot(gs[:3, :3])
-            ax.imshow(ZScaleInterval()(frame[x1_:x2_, y1_:y2_]),origin="lower",cmap="Greys_r")
-            ax.set_xticks([])
-            ax.set_yticks([])
-            rect = Rectangle((y1 - y1_, x1 - x1_), 2 * boxsz, 2 * boxsz, linewidth=1, edgecolor='y', facecolor='none',
-                             ls='solid')
-            ax.add_patch(rect)
+    if step=="prescreen": # generate faster but less informative full depth qa images
+        print(f'Generating {source_ix} {band} QA image.')
+        fig = plt.figure(figsize=(12, 9));
+        fig.tight_layout()
+        ax = fig.add_subplot(gs[:3, :])
+        ax.imshow(ZScaleInterval()(frame[x1_:x2_, y1_:y2_]), origin="lower", cmap="Greys_r")
+        ax.set_xticks([])
+        ax.set_yticks([])
+        rect = Rectangle((y1 - y1_, x1 - x1_), 2 * boxsz, 2 * boxsz, linewidth=1, edgecolor='y', facecolor='none',
+                         ls='solid')
+        ax.add_patch(rect)
 
-            ax = fig.add_subplot(gs[:3, 3:])
-            ax.imshow(ZScaleInterval()(frame[x1:x2, y1:y2]),origin="lower",cmap="Greys_r")
-            ax.set_xticks([])
-            ax.set_xticks([])
-            ax.set_yticks([])
-            circ = Circle((boxsz, boxsz), 20, linewidth=1, edgecolor='y', facecolor='none', ls='solid')
-            ax.add_patch(circ)
+        ax = fig.add_subplot(gs[3:, :])
+        ax.vlines(curve[band]['t'][i], curve[band]['cps'][min_i] - 3 * curve[band]['cps_err'][min_i],
+                  curve[band]['cps'][max_i] + 3 * curve[band]['cps_err'][max_i], ls='dotted')
+        ax.scatter(curve[band]['t'][i], curve[band]['cps'][i], c='y', s=100, marker='o')
+        ax.errorbar(curve[band]['t'], curve[band]['cps'],
+                    yerr=curve[band]['cps_err'] * 3, fmt='k.-', label=band)
+        ax.set_xlim([curve[band]['t'].min() - 30, curve[band]['t'].max() + 60])
+        ax.set_xticks([])
+        plt.legend()
 
-            ax = fig.add_subplot(gs[3:, :])
-            ax.vlines(curve[band]['t'][i], curve[band]['cps'][min_i] - 3 * curve[band]['cps_err'][min_i],
-                      curve[band]['cps'][max_i] + 3 * curve[band]['cps_err'][max_i], ls='dotted')
-            ax.scatter(curve[band]['t'][i], curve[band]['cps'][i], c='y', s=100, marker='o')
-            ax.errorbar(curve[band]['t'], curve[band]['cps'],
-                        yerr=curve[band]['cps_err'] * 3, fmt='k.-',label=band)
-            ax.set_xlim([curve[band]['t'].min()-30,curve[band]['t'].max()+60])
-            ax.set_xticks([])
-            plt.legend()
+        plt.savefig(f'{edir}/{estring}-{b}-full-{str(i).zfill(2)}-{str(source_ix).zfill(5)}.jpg', dpi=100)
+        plt.close('all')
 
-            plt.savefig(f'{edir}/{estring}-{b}-30s-{str(i).zfill(2)}-{str(source_ix).zfill(5)}.jpg', dpi=100)
-            plt.close('all')
+    else: # generate slower but more informative animated qa images
+            print(f'Generating {source_ix} {band} QA frames.')
+            for i, frame in enumerate(imgmap):  # probably eliminate the first / last frame, which always has lower exposure
+                fig = plt.figure(figsize=(12, 9));
+                fig.tight_layout()
+                ax = fig.add_subplot(gs[:3, :3])
+                ax.imshow(ZScaleInterval()(frame[x1_:x2_, y1_:y2_]),origin="lower",cmap="Greys_r")
+                ax.set_xticks([])
+                ax.set_yticks([])
+                rect = Rectangle((y1 - y1_, x1 - x1_), 2 * boxsz, 2 * boxsz, linewidth=1, edgecolor='y', facecolor='none',
+                                 ls='solid')
+                ax.add_patch(rect)
 
-        print(f'Compiling {source_ix} {band} movie.')
-        n_frames = np.shape(movmap)[0]
-        # write the animated gif
-        gif_fn = f'{edir}/{estring}-{str(source_ix).zfill(5)}-{b}-30s.gif'
-        print(f"writing {gif_fn}")
-        with imageio.get_writer(gif_fn, mode='I', fps=6) as writer:
-            for i in np.arange(n_frames):
-                frame_fn = f'{edir}/{estring}-{b}-30s-{str(i).zfill(2)}-{str(source_ix).zfill(5)}.jpg'
-                image = imageio.imread(frame_fn)
-                writer.append_data(image)
-                # remove the png frames
-                os.remove(frame_fn)
+                ax = fig.add_subplot(gs[:3, 3:])
+                ax.imshow(ZScaleInterval()(frame[x1:x2, y1:y2]),origin="lower",cmap="Greys_r")
+                ax.set_xticks([])
+                ax.set_xticks([])
+                ax.set_yticks([])
+                circ = Circle((boxsz, boxsz), 20, linewidth=1, edgecolor='y', facecolor='none', ls='solid')
+                ax.add_patch(circ)
+
+                ax = fig.add_subplot(gs[3:, :])
+                ax.vlines(curve[band]['t'][i], curve[band]['cps'][min_i] - 3 * curve[band]['cps_err'][min_i],
+                          curve[band]['cps'][max_i] + 3 * curve[band]['cps_err'][max_i], ls='dotted')
+                ax.scatter(curve[band]['t'][i], curve[band]['cps'][i], c='y', s=100, marker='o')
+                ax.errorbar(curve[band]['t'], curve[band]['cps'],
+                            yerr=curve[band]['cps_err'] * 3, fmt='k.-',label=band)
+                ax.set_xlim([curve[band]['t'].min()-30,curve[band]['t'].max()+60])
+                ax.set_xticks([])
+                plt.legend()
+
+                plt.savefig(f'{edir}/{estring}-{b}-30s-{str(i).zfill(2)}-{str(source_ix).zfill(5)}.jpg', dpi=100)
+                plt.close('all')
+
+            print(f'Compiling {source_ix} {band} movie.')
+            n_frames = np.shape(imgmap)[0]
+            # write the animated gif
+            gif_fn = f'{edir}/{estring}-{str(source_ix).zfill(5)}-{b}-30s.gif'
+            print(f"writing {gif_fn}")
+            with imageio.get_writer(gif_fn, mode='I', fps=6) as writer:
+                for i in np.arange(n_frames):
+                    frame_fn = f'{edir}/{estring}-{b}-30s-{str(i).zfill(2)}-{str(source_ix).zfill(5)}.jpg'
+                    image = imageio.imread(frame_fn)
+                    writer.append_data(image)
+                    # remove the png frames
+                    os.remove(frame_fn)
 
     # remove the local copies of the
     #if cleanup:
