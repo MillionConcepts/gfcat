@@ -66,7 +66,7 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
     if not os.path.exists(imgfilename):
         cmd = f"aws s3 cp s3://dream-pool/{estring}/{estring}-{band[0].lower()}d-{depth}.fits.gz {edir}/."
         os.system(cmd)
-    print(f'Reading {estring} {band} movie file.')
+    print(f'Reading {estring} {band} {depth}-depth file.')
     imgmap, _, _, wcs, tranges, exptimes = read_image(imgfilename)
     # The WCS in the movie files incorrectly uses the number of frames as an image dimension. Hack fix it here.
     # fixed in support code
@@ -194,6 +194,11 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
     #if cleanup:
     os.remove(photfilename)
     os.remove(imgfilename)
+    if mode=="prescreen":
+        cmd = f"aws s3 cp {edir}/*jpg s3://dream-pool/{estring}/."
+    else:
+        cmd = f"aws s3 cp {edir}/*gif s3://dream-pool/{estring}/."
+    os.system(cmd)
 
 def main(eclipse:int,photdir = '/home/ubuntu/datadir/', make_qa_images=True):
     estring = f"e{str(eclipse).zfill(5)}"
@@ -212,8 +217,8 @@ def main(eclipse:int,photdir = '/home/ubuntu/datadir/', make_qa_images=True):
         except KeyError:
             pass
 
-    cmd = f"aws s3 cp {edir}/*gif s3://dream-pool/{estring}/."
-    print(cmd)
+    print(f"Cleaning up {photdir}")
+    shutil.rmtree(f"{photdir}/*")
 
 
 # tell clize to handle command line call
