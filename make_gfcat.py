@@ -218,7 +218,7 @@ def main(eclipse:int,photdir = '/home/ubuntu/datadir/', make_qa_images=True):
             pass
 
     print(f"Cleaning up {photdir}")
-    shutil.rmtree(f"{photdir}/*")
+    os.system(f"rm -rf {photdir}")
 
 
 # tell clize to handle command line call
