@@ -132,7 +132,7 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
         ax.set_xticks([])
         plt.legend()
 
-        plt.savefig(f'{edir}/{estring}-{b}-full-{str(i).zfill(2)}-{str(source_ix).zfill(5)}.jpg', dpi=100)
+        plt.savefig(f'{edir}/{estring}-{b}-full-{str(source_ix).zfill(5)}.jpg', dpi=100)
         plt.close('all')
 
     else: # generate slower but more informative animated qa images
