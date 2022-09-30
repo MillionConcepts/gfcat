@@ -69,8 +69,9 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
     print(f'Reading {estring} {band} movie file.')
     imgmap, _, _, wcs, tranges, exptimes = read_image(imgfilename)
     # The WCS in the movie files incorrectly uses the number of frames as an image dimension. Hack fix it here.
-    wcs.wcs.crpix[0] = np.shape(imgmap)[2]/2 + 0.5
-    wcs.wcs.crpix[1] = np.shape(imgmap)[1]/2 + 0.5
+    # fixed in support code
+    #wcs.wcs.crpix[0] = np.shape(imgmap)[2]/2 + 0.5
+    #wcs.wcs.crpix[1] = np.shape(imgmap)[1]/2 + 0.5
     imgmap[np.where(np.isinf(imgmap))] = 0  # because it pops out with inf values... IDK
     imgmap[np.where(imgmap < 0)] = 0
 
