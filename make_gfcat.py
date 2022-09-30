@@ -91,7 +91,7 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
         imgx,imgy = imgpos[0]
 
         # define the bounding box for the thumbnail
-        imsz = np.shape(imgmap[0] if step=="prescreen" else imgmap)
+        imsz = np.shape(imgmap)[-2:]
 
         # crop on the subframe
         # noting that image coordinates and numpy coordinates are flipped
