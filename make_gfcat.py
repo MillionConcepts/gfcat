@@ -194,11 +194,11 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
     #if cleanup:
     os.remove(photfilename)
     os.remove(imgfilename)
-    if step=="prescreen":
-        cmd = f"aws s3 cp {edir}/*jpg s3://dream-pool/{estring}/."
-    else:
-        cmd = f"aws s3 cp {edir}/*gif s3://dream-pool/{estring}/."
-    os.system(cmd)
+    #if step=="prescreen":
+    #    cmd = f"aws s3 cp {edir}/*jpg s3://dream-pool/{estring}/."
+    #else:
+    #    cmd = f"aws s3 cp {edir}/*gif s3://dream-pool/{estring}/."
+    #os.system(cmd)
 
 def main(eclipse:int,photdir = '/home/ubuntu/datadir/', make_qa_images=True):
     estring = f"e{str(eclipse).zfill(5)}"
@@ -218,7 +218,7 @@ def main(eclipse:int,photdir = '/home/ubuntu/datadir/', make_qa_images=True):
             pass
 
     print(f"Cleaning up {photdir}")
-    os.system(f"rm -rf {photdir}")
+    os.system(f"rm -rf {photdir}/*/*parquet")
 
 
 # tell clize to handle command line call
