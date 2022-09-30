@@ -67,7 +67,7 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
         cmd = f"aws s3 cp s3://dream-pool/{estring}/{estring}-{band[0].lower()}d-{depth}.fits.gz {edir}/."
         os.system(cmd)
     print(f'Reading {estring} {band} movie file.')
-    imgmap, _, _, wcs, tranges, exptimes = read_image(movfilename)
+    imgmap, _, _, wcs, tranges, exptimes = read_image(imgfilename)
     # The WCS in the movie files incorrectly uses the number of frames as an image dimension. Hack fix it here.
     wcs.wcs.crpix[0] = np.shape(imgmap)[2]/2 + 0.5
     wcs.wcs.crpix[1] = np.shape(imgmap)[1]/2 + 0.5
@@ -186,7 +186,7 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
     # remove the local copies of the
     #if cleanup:
     os.remove(photfilename)
-    os.remove(movfilename)
+    os.remove(imgfilename)
 
 def main(eclipse:int,photdir = '/home/ubuntu/datadir/', make_qa_images=True):
     estring = f"e{str(eclipse).zfill(5)}"
