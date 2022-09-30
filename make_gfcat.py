@@ -126,9 +126,6 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
         ax.add_patch(rect)
 
         ax = fig.add_subplot(gs[3:, :])
-        ax.vlines(curve[band]['t'][i], curve[band]['cps'][min_i] - 3 * curve[band]['cps_err'][min_i],
-                  curve[band]['cps'][max_i] + 3 * curve[band]['cps_err'][max_i], ls='dotted')
-        ax.scatter(curve[band]['t'][i], curve[band]['cps'][i], c='y', s=100, marker='o')
         ax.errorbar(curve[band]['t'], curve[band]['cps'],
                     yerr=curve[band]['cps_err'] * 3, fmt='k.-', label=band)
         ax.set_xlim([curve[band]['t'].min() - 30, curve[band]['t'].max() + 60])
