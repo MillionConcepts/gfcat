@@ -118,7 +118,7 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
         fig = plt.figure(figsize=(12, 9));
         fig.tight_layout()
         ax = fig.add_subplot(gs[:3, :])
-        ax.imshow(ZScaleInterval()(frame[x1_:x2_, y1_:y2_]), origin="lower", cmap="Greys_r")
+        ax.imshow(ZScaleInterval()(imgmap[x1_:x2_, y1_:y2_]), origin="lower", cmap="Greys_r")
         ax.set_xticks([])
         ax.set_yticks([])
         rect = Rectangle((y1 - y1_, x1 - x1_), 2 * boxsz, 2 * boxsz, linewidth=1, edgecolor='y', facecolor='none',
