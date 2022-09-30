@@ -140,7 +140,7 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
         ax.set_xticks([])
         plt.legend()
 
-        plt.savefig(f'{edir}/{estring}-{b}-full-{str(source_ix).zfill(5)}.jpg', dpi=100)
+        plt.savefig(f'{edir}/{estring}-{str(source_ix).zfill(5)}-{b}-full.jpg', dpi=100)
         plt.close('all')
 
     else: # generate slower but more informative animated qa images
@@ -174,7 +174,7 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
                 ax.set_xticks([])
                 plt.legend()
 
-                plt.savefig(f'{edir}/{estring}-{b}-30s-{str(i).zfill(2)}-{str(source_ix).zfill(5)}.jpg', dpi=100)
+                plt.savefig(f'{edir}/{estring}-{str(source_ix).zfill(5)}-{b}-30s-{str(i).zfill(2)}.jpg', dpi=100)
                 plt.close('all')
 
             print(f'Compiling {source_ix} {band} movie.')
@@ -184,7 +184,7 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
             print(f"writing {gif_fn}")
             with imageio.get_writer(gif_fn, mode='I', fps=6) as writer:
                 for i in np.arange(n_frames):
-                    frame_fn = f'{edir}/{estring}-{b}-30s-{str(i).zfill(2)}-{str(source_ix).zfill(5)}.jpg'
+                    frame_fn = f'{edir}/{estring}-{str(source_ix).zfill(5)}-{b}-30s-{str(i).zfill(2)}.jpg'
                     image = imageio.imread(frame_fn)
                     writer.append_data(image)
                     # remove the png frames
