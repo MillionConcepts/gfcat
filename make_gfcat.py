@@ -111,7 +111,7 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
                               max(int(imsz[1] / 2 - imsz[0] / 2), 0),
                               min(int(imsz[1] / 2 + imsz[0] / 2), imsz[1]))
 
-        gs = gridspec.GridSpec(nrows=3, ncols=6)  # , height_ratios=[1, 1, 2])
+        gs = gridspec.GridSpec(nrows=4, ncols=6)  # , height_ratios=[1, 1, 2])
 
     if step=="prescreen": # generate faster but less informative full depth qa images
         print(f'Generating {source_ix} {band} QA image.')
