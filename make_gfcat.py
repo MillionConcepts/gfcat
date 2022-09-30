@@ -83,7 +83,8 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
                        'cps_err':lc['cps_err']}}
         min_i, max_i = np.argmin(curve[band]['cps']), np.argmax(curve[band]['cps'])
 
-        assert len(lc['cps']) == np.shape(imgmap)[0]  # if these don't match then the gif will be out of sync
+        if not step=="prescreen":
+            assert len(lc['cps']) == np.shape(imgmap)[0]  # if these don't match then the gif will be out of sync
 
         # get the image pixel coordinates of the source via WCS
         imgpos = wcs.wcs_world2pix([[lc['ra'],lc['dec']]],1) # set the origin to FITS standard
