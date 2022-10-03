@@ -47,7 +47,7 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
 
     try:
         lightcurves = load_lightcurve_records(photfilename, band, apersize=aper_radius)
-    except KeyError:
+    except:
         print(f'No {band} data available for {estring}.')
         return
     expt = parse_exposure_time(photfilename)
