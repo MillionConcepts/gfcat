@@ -34,6 +34,10 @@ def screen_eclipse(eclipse, photdir = '/home/ubuntu/datadir/', band = 'NUV'):
 
 def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
                   photdir = '/home/ubuntu/datadir/', band = 'NUV',aper_radius=12.8, cleanup=True):
+    if len(obj_ids)==0:
+        print('No object ids passed. Returning.')
+    elif len(obj_ids)==1:
+        obj_ids=[obj_ids] # single parameter passed, so make it an array
     e,b = eclipse,band[0].lower()
     estring = f"e{str(eclipse).zfill(5)}"
     edir = f"{photdir}{estring}"
@@ -190,35 +194,37 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
                     # remove the png frames
                     os.remove(frame_fn)
 
-    # remove the local copies of the
+    # remove the local copies of image data
     #if cleanup:
     os.remove(photfilename)
     os.remove(imgfilename)
-    #if step=="prescreen":
-    #    cmd = f"aws s3 cp {edir}/*jpg s3://dream-pool/{estring}/."
-    #else:
-    #    cmd = f"aws s3 cp {edir}/*gif s3://dream-pool/{estring}/."
-    #os.system(cmd)
+    cmd = f"aws s3 sync {photdir} s3://dream-pool/ --dryrun"
+    os.system(cmd)
+    print(f"Cleaning up {photdir}")
+    os.system(f"rm -rf {photdir}/*)
 
-def main(eclipse:int,photdir = '/home/ubuntu/datadir/', make_qa_images=True):
+def main(eclipse:int, varix:int photdir = '/home/ubuntu/datadir/', make_qa_images=True
+         step="final"):
     estring = f"e{str(eclipse).zfill(5)}"
     edir = f"{photdir}{estring}"
     print(f'Processing {estring}')
-    varix = screen_eclipse(eclipse, photdir=photdir)
-    if len(varix):
-        print(f'Variables found {varix}')
-    else:
-        print('No variables found')
+    #if not len(varix):
+    #    varix = screen_eclipse(eclipse, photdir=photdir)
+    #if len(varix):
+    #    print(f'Variables found {varix}')
+    #else:
+    #    print('No variables found')
 
-    if len(varix) and make_qa_images:
-        make_qa_image(eclipse,varix,band='NUV', photdir=photdir)
-        try:
-            make_qa_image(eclipse,varix,band='FUV', photdir=photdir)
-        except KeyError:
-            pass
+    #if len(varix) and make_qa_images:
+    make_qa_image(eclipse,varix,band='NUV', photdir=photdir, step=step)
+    try:
+        make_qa_image(eclipse,varix,band='FUV', photdir=photdir, step=step)
+    except KeyError:
+        pass
 
+    # this might also catch / remove residual files from prior failed visits
     print(f"Cleaning up {photdir}")
-    os.system(f"rm -rf {photdir}/*/*parquet")
+    os.system(f"rm -rf {photdir}/*)
 
 
 # tell clize to handle command line call
