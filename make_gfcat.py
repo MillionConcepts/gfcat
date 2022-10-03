@@ -198,7 +198,7 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
     #if cleanup:
     os.remove(photfilename)
     os.remove(imgfilename)
-    cmd = f"aws s3 sync {photdir} s3://dream-pool/ --dryrun"
+    cmd = f"aws s3 sync {photdir} s3://dream-pool/"
     os.system(cmd)
     print(f"Cleaning up {photdir}")
     os.system(f"rm -rf {photdir}/*")
