@@ -39,6 +39,8 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
     e,b = eclipse,band[0].lower()
     estring = f"e{str(eclipse).zfill(5)}"
     edir = f"{photdir}{estring}"
+    if not os.path.exists(edir):
+        os.makedirs(edir)
     print(f'Initialize QA images creation for {estring} {band}')
     photfilename = f"{edir}/{estring}-30s-photom.parquet"
     if not os.path.exists(photfilename):
