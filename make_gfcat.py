@@ -204,7 +204,7 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
     os.system(f"rm -rf {photdir}/*")
 
 def main(eclipse:int, varix:int, photdir = '/home/ubuntu/datadir/', make_qa_images=True,
-         step="final"):
+         step="prescreen"): # "prescreen" for static images; "final" for animated GIFS (slower)
     estring = f"e{str(eclipse).zfill(5)}"
     edir = f"{photdir}{estring}"
     print(f'Processing {estring}')
