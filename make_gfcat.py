@@ -138,7 +138,7 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
         ax.add_patch(circ)
 
         ax = fig.add_subplot(gs[3:, :])
-        is_variable = (curve[band]['cps']-curve[band]['cps_err'])[1:-1].max()-(curve[band]['cps']+curve[band]['cps_err'])[1:-1].min()>0
+        is_variable = (curve[band]['cps']-3*curve[band]['cps_err'])[1:-1].max()-(curve[band]['cps']+3*curve[band]['cps_err'])[1:-1].min()>0
         ax.set_title('(v)' if is_variable else '')
         ax.errorbar(curve[band]['t'], curve[band]['cps'],
                     yerr=curve[band]['cps_err'] * 3, fmt='k.-', label=band)
