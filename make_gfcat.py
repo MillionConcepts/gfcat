@@ -118,8 +118,9 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
         gs = gridspec.GridSpec(nrows=4, ncols=6)  # , height_ratios=[1, 1, 2])
 
         if step=="prescreen": # generate faster but less informative full depth qa images
-            is_variable = (np.argmin((curve[band]['cps']-3*curve[band]['cps_err'])[1:-1])-
-                           np.argmax((curve[band]['cps']+3*curve[band]['cps_err'])[1:-1])>0)
+            valid_ix = np.where(np.isfinite(curve[band]['cps']))
+            is_variable = (np.argmin((curve[band]['cps']-3*curve[band]['cps_err'])[valid_ix][1:-1])-
+                           np.argmax((curve[band]['cps']+3*curve[band]['cps_err'])[valid_ix][1:-1])>0)
             if not is_variable: # skip non variable sources according to dumb heurisitic; added for known variable screen
                 print(f'Skipping non-variable e{eclipse} {source_ix}')
                 plt.close('all')
