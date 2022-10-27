@@ -119,7 +119,7 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
 
         if step=="prescreen": # generate faster but less informative full depth qa images
             is_variable = (np.argmin((curve[band]['cps']-3*curve[band]['cps_err'])[1:-1])-
-                           np.argmax((curve[band]['cps']+3*curve[band]['cps_err'])[1:-1])>0
+                           np.argmax((curve[band]['cps']+3*curve[band]['cps_err'])[1:-1])>0)
             if not is_variable: # skip non variable sources according to dumb heurisitic; added for known variable screen
                 print(f'Skipping non-variable e{eclipse} {source_ix}')
                 plt.close('all')
