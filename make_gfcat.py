@@ -117,39 +117,45 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
 
         gs = gridspec.GridSpec(nrows=4, ncols=6)  # , height_ratios=[1, 1, 2])
 
-    if step=="prescreen": # generate faster but less informative full depth qa images
-        print(f'Generating {source_ix} {band} QA image.')
-        fig = plt.figure(figsize=(12, 9));
-        fig.tight_layout()
-        ax = fig.add_subplot(gs[:3, :3])
-        ax.imshow(ZScaleInterval()(imgmap[x1_:x2_, y1_:y2_]), origin="lower", cmap="Greys_r")
-        ax.set_xticks([])
-        ax.set_yticks([])
-        rect = Rectangle((y1 - y1_, x1 - x1_), 2 * boxsz, 2 * boxsz, linewidth=1, edgecolor='y', facecolor='none',
-                         ls='solid')
-        ax.add_patch(rect)
+        if step=="prescreen": # generate faster but less informative full depth qa images
+            is_variable = (np.argmin((curve[band]['cps']-3*curve[band]['cps_err'])[1:-1])-
+                           np.argmax((curve[band]['cps']+3*curve[band]['cps_err'])[1:-1])>0
+            if not is_variable: # skip non variable sources according to dumb heurisitic; added for known variable screen
+                print(f'Skipping non-variable e{eclipse} {source_ix}')
+                plt.close('all')
+                return
 
-        ax = fig.add_subplot(gs[:3, 3:])
-        ax.imshow(ZScaleInterval()(imgmap[x1:x2, y1:y2]), origin="lower", cmap="Greys_r")
-        ax.set_xticks([])
-        ax.set_xticks([])
-        ax.set_yticks([])
-        circ = Circle((boxsz, boxsz), 20, linewidth=1, edgecolor='y', facecolor='none', ls='solid')
-        ax.add_patch(circ)
+            print(f'Generating {source_ix} {band} QA image.')
+            fig = plt.figure(figsize=(12, 9));
+            fig.tight_layout()
+            ax = fig.add_subplot(gs[:3, :3])
+            ax.imshow(ZScaleInterval()(imgmap[x1_:x2_, y1_:y2_]), origin="lower", cmap="Greys_r")
+            ax.set_xticks([])
+            ax.set_yticks([])
+            rect = Rectangle((y1 - y1_, x1 - x1_), 2 * boxsz, 2 * boxsz, linewidth=1, edgecolor='y', facecolor='none',
+                             ls='solid')
+            ax.add_patch(rect)
 
-        ax = fig.add_subplot(gs[3:, :])
-        is_variable = (curve[band]['cps']-3*curve[band]['cps_err'])[1:-1].max()-(curve[band]['cps']+3*curve[band]['cps_err'])[1:-1].min()>0
-        ax.set_title('(v)' if is_variable else '')
-        ax.errorbar(curve[band]['t'], curve[band]['cps'],
-                    yerr=curve[band]['cps_err'] * 3, fmt='k.-', label=band)
-        ax.set_xlim([curve[band]['t'].min() - 30, curve[band]['t'].max() + 60])
-        ax.set_xticks([])
-        plt.legend()
+            ax = fig.add_subplot(gs[:3, 3:])
+            ax.imshow(ZScaleInterval()(imgmap[x1:x2, y1:y2]), origin="lower", cmap="Greys_r")
+            ax.set_xticks([])
+            ax.set_xticks([])
+            ax.set_yticks([])
+            circ = Circle((boxsz, boxsz), 20, linewidth=1, edgecolor='y', facecolor='none', ls='solid')
+            ax.add_patch(circ)
 
-        plt.savefig(f'{edir}/{estring}-{str(source_ix).zfill(5)}-{b}-full.jpg', dpi=100)
-        plt.close('all')
+            ax = fig.add_subplot(gs[3:, :])
+            #ax.set_title('(v)' if is_variable else '')
+            ax.errorbar(curve[band]['t'], curve[band]['cps'],
+                        yerr=curve[band]['cps_err'] * 3, fmt='k.-', label=band)
+            ax.set_xlim([curve[band]['t'].min() - 30, curve[band]['t'].max() + 60])
+            ax.set_xticks([])
+            plt.legend()
 
-    else: # generate slower but more informative animated qa images
+            plt.savefig(f'{edir}/{estring}-{str(source_ix).zfill(5)}-{b}-full.jpg', dpi=100)
+            plt.close('all')
+
+        else: # generate slower but more informative animated qa images
             print(f'Generating {source_ix} {band} QA frames.')
             for i, frame in enumerate(imgmap):  # probably eliminate the first / last frame, which always has lower exposure
                 fig = plt.figure(figsize=(12, 9));
