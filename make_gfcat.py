@@ -52,7 +52,7 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
     except KeyError:
         print(f'No {band} data available for {estring}.')
         return
-    expt = parse_exposure_time(photfilename)
+    expt = parse_exposure_time(photfilename, band=band)
 
     variables = {}
     for lc in lightcurves:
@@ -118,7 +118,7 @@ def make_qa_image(eclipse, obj_ids, step="prescreen", # or "final"
         gs = gridspec.GridSpec(nrows=4, ncols=6)  # , height_ratios=[1, 1, 2])
 
         if step=="prescreen": # generate faster but less informative full depth qa images
-            valid_ix = np.where(np.isfinite(curve[band]['cps']))
+            valid_ix = np.where(np.isfinite(curve[band]['cps']) & (expt['expt_eff']>20))
             is_variable = (np.argmin((curve[band]['cps']-3*curve[band]['cps_err'])[valid_ix][1:-1])-
                            np.argmax((curve[band]['cps']+3*curve[band]['cps_err'])[valid_ix][1:-1])>0)
             if not is_variable: # skip non variable sources according to dumb heurisitic; added for known variable screen
