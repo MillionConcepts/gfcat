@@ -1,0 +1,16 @@
+Object Table : gfcat_object_table.csv
+
+The GFCAT object table contains one row per unique source contained in GFCAT.
+The unique identifier `gfcat_objid` pivots on the column of the same name
+in the visit-level table for easy cross-referencing.
+
+gfcat_objid : unique GFCAT identifier for this object
+ra : right ascension of source in decimal degrees, J2000 ICRF
+dec : right ascension of source in decimal degrees, J2000 ICRF
+n_gfcat : number of visits to this source recorded in GFCAT; corresponds to number of distinct rows in 
+	GFCAT source-level table with this gfcat_objid 
+simbad_id : the SIMBAD Main ID of the source nearest to source position ("MAIN_ID" in the SIMBAD API)
+simbad_otype : the SIMBAD OTYPEs of _all_ sources reported by SIMBAD within 17.5'' of source position 
+	("OTYPE" in the SIMBAD API)
+simbad_match_offset : distance, in arcseconds, between source position and nearest SIMBAD-reported source
+simbad_n_match : the number of sources reported by SIMBAD within 17.5'' of the source position

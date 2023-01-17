@@ -1,0 +1,52 @@
+Flare Table : gfcat_flare_table.csv
+
+The GFCAT table of candidate flares contains one row for each lightcurve (source-visit) 
+manually identified as morphologically flare-like. This table inherits many columns from 
+the visit-level table; definitions for those columns can be found in 
+gfcat_visit_table_defs.txt. This file describes columns unique to the flare table.
+
+NOTE: 
+All fluence and energy values are recorded in base-10 log scale. For instance, a value 
+of 32 in the energy_NUV column means 10^32 ergs.
+
+fluence_NUV : the integrated fluence of the flare in NUV [ergs / cm^2]
+fluence_err_NUV : the error on the integrated fluence of the flare in NUV [ergs / cm^2]
+fluence_FUV : the integrated fluence of the flare in FUV [ergs / cm^2]
+fluence_err_FUV : the error on the integrated fluence of the flare in FUV [ergs / cm^2]
+energy_NUV : the integrated energy of the flare in NUV [ergs]
+energy_err_1_NUV : the lower error on the integrated energy of the flare in NUV [ergs]
+energy_err_2_NUV : the upper error on the integrated energy of the flare in NUV [ergs]
+energy_FUV : the integrated energy of the flare in FUV [ergs]
+energy_err_1_FUV : the lower error on the integrated energy of the flare in FUV [ergs]
+energy_err_2_FUV : the upper error on the integrated energy of the flare in FUV [ergs]
+duration : the duration of the flare [sec]
+left_censored : a flag indicating whether the flare extent includes the first time bin in the observation
+right_censored : a flag indicating whether the flare extent includes the last time bin in the observation
+peak_cps_NUV : the maximum value, in counts-per-second, of the NUV flare lightcurve
+peak_cps_err_NUV : the counting error on cps of the maximum value in the NUV flare lightcurve
+peak_flux_NUV : the maximum value, in flux, of the NUV flare lightcurve [erg sec-1 cm-2 Å-1]
+peak_flux_err_NUV : the counting error on flux of the maximum value in the NUV flare lightcurve [erg sec-1 cm-2 Å-1]
+peak_mag_NUV : the maximum value, in AB Mag, of the NUV flare lightcurve
+peak_mag_err_NUV : the counting error on AB mag of the maximum value in the NUV flare lightcurve
+peak_t0_NUV : starting timestamp of bin containing the maximum value in the NUV flare lightcurve [sec, GALEX time scale]
+peak_censored : a flag indicating whether the maximum value in the flare lightcurve is the first or
+    last time bin, suggesting that the peak of the flare was not observed
+quiescence_cps NUV : the estimated quiescence (instantaneous non-flare flux) of the NUV lightcurve in cps
+quiescence_cps_err_NUV : the counting error in cps on the estimated quiescence in NUV
+quiescence_flux_NUV : the estimated quiescence (instantaneous non-flare flux) of the NUV lightcurve [erg sec-1 cm-2 Å-1]
+quiescence_flux_err_NUV : the counting error in cps on the estimated quiescence in NUV [erg sec-1 cm-2 Å-1]
+quiescence_mag_NUV : the estimated quiescence (instantaneous non-flare flux) of the NUV lightcurve in AB mag
+quiescence_mag_err_NUV : the counting error in cps on the estimated quiescence in NUV in AB mag
+peak_cps_FUV : the maximum value, in counts-per-second, of the FUV flare lightcurve
+peak_cps_err_FUV : the counting error on cps of the maximum value in the FUV flare lightcurve
+peak_flux_FUV : the maximum value, in flux, of the NUV flare lightcurve [erg sec-1 cm-2 Å-1]
+peak_flux_err_FUV : the counting error on flux of the maximum value in the FUV flare lightcurve [erg sec-1 cm-2 Å-1]
+peak_mag_FUV : the maximum value, in AB Mag, of the FUV flare lightcurve
+peak_mag_err_FUV : the counting error on AB mag of the maximum value in the FUV flare lightcurve
+peak_t0_FUV : starting timestamp of bin containing the maximum value in the FUV flare lightcurve [sec, GALEX time scale]
+quiescence_cps FUV : the estimated quiescence o(instantaneous non-flare) flux of the FUV lightcurve in cps
+quiescence_cps_err_FUV : the counting error in cps on the estimated quiescence in FUV
+quiescence_flux_FUV : the estimated quiescence (instantaneous non-flare flux) of the FUV lightcurve [erg sec-1 cm-2 Å-1]
+quiescence_flux_err_FUV : the counting error in cps on the estimated quiescence in FUV [erg sec-1 cm-2 Å-1]
+quiescence_mag_FUV : the estimated quiescence (instantaneous non-flare flux) of the FUV lightcurve in AB mag
+quiescence_mag_err_FUV : the counting error in cps on the estimated quiescence in FUV in AB mag

@@ -1,0 +1,6 @@
+Eclipse Table : gfcat_eclipse_table.csv
+
+The GFCAT table of candidate eclipses contains one row / entry per lightcurve manually
+identified as containing morphology possibly consistent with a stellar eclipse.
+This table inherits all columns from the visit-level table, and the
+definitions for those columns will be found in gfcat_visit_table_column_defs.txt.

@@ -1,0 +1,104 @@
+Visit Table : gfcat_visit_table.csv
+
+The GFCAT visit-level table contains one row per lightcurve identified as consistent 
+with astrophysical variability. Each lightcurve corresponds to one "source-visit": a
+single observation of a specific source. Unless otherwise noted, all measurements in this
+table were performed using a circular aperture with a radius of 17.5 arcseconds centered 
+on the positions indicated by `ra` and `dec`. Some time values are in "GALEX Time" scale.
+This is equivalent to UNIX Time minus 315964800, in seconds (i.e. GALEX TIME = UNIX TIME - 315964800).
+
+
+NOTE: 
+To improve human-readability of the table, two dashes "--" have been used as a missing-value
+placeholder. In many data-processing applications, this value will need to be specified as a special 
+constant or replaced with a valid special constant before analysis.
+
+eclipse : GALEX eclipse number of the observation
+ra : the target's right ascension in decimal degrees, J2000 ICRF
+dec : the target's declination in decimal degrees, J2000 ICRF
+simbad_n_match : the number of sources matched in SIMBAD within 17.5'' of the target position
+simbad_otype : the SIMBAD OTYPE of _all_ sources found within 17.5'' of the target position ("OTYPE" in the SIMBAD API)
+simbad_main_id : the SIMBAD Main ID of the SIMBAD-reported source nearest to the target position ("MAIN_ID" in the SIMBAD API).
+    SIMBAD distance and parallax quantities refer to this source.
+simbad_match_offset : the distance in arcseconds between the target position and the nearest SIMBAD source 
+simbad_distance : the distance to the target in parsecs, as computed from SIMBAD parallax
+simbad_distance_err_1 : the lower error on distance to the target in parsecs, as computed from SIMBAD parallax error
+simbad_distance_err_2 : the upper error on distance to the target in parsecs, as computed from SIMBAD parallax error
+simbad_parallax : the SIMBAD-provided parallax to the target ("PLX_VALUE" in the SIMBAD API)
+simbad_parallax_err : the error on the SIMBAD-provided parallax to the target ("PLX_ERROR" in the SIMBAD API)
+obstart : the observation start time in GALEX time 
+datetime_iso : the observation start time in ISO 8601 format [UTC]
+datetime_decimal : the observation start time in decimal year
+gaia_match_offset : The distance in arcseconds between the target position and the nearest Gaia source
+gaia_n_match : the number of sources matched in Gaia within 17.5'' of the target position; Gaia sources were
+    readjusted to the GALEX epoch using the proper motion parameters below (pmra, pmdec)
+gaia_dr3_source_id : the Gaia id of the Gaia source nearest to the target position ("source_id" in the Gaia API).
+    gaia distance, parallax, and proper motion quantities refer to this source. 
+gaia_distance : the distance to the target in parsecs, as computed from Gaia parallax
+gaia_distance_err_2 : the lower error on distance to the target in parsecs, as computed from Gaia parallax
+gaia_distance_err_1 : the upper error on distance to the target in parsecs, as computed from Gaia parallax
+gaia_parallax : the Gaia parallax of the target in milliarcseconds ("parallax" in the Gaia API)
+gaia_parallax_err : the error on the Gaia parallax of the target in mas ("parallax_error" in the Gaia API)
+gaia_parallax_over_err : the ratio of Gaia error to parallax of the target ("parallax_over_error" in the Gaia API)
+pmra : the proper motion of right ascension of the source in mas / yr, as provided by Gaia ("pmra" in the Gaia API)
+pmdec : the proper motion of the declination fo the source in mas / yr, as provided by Gaia ("pmdec" in the Gaia API)
+gaia_ra : the right ascension of the matching source in Gaia, in J2000 decimal degrees
+gaia_dec : the delciantion of the matching source in Gaia, in J2000 decimal degrees
+distance : the best available distance estimate to the source in parsecs; this uses the Gaia distance if available, failing back
+   to the SIMBAD-provided distance, or none
+distance_err_1 : the lower error on distance in parsecs of the best available distance estimate
+distance_err_2 : the upper error on distance in parsecs of the best available distance estsiamte
+cps_min_NUV : minimum value of the NUV lightcurve in counts-per-second
+cps_min_err_NUV : counting error on counts-per-second of minimum value in the NUV lightcurve
+mag_min_NUV : minimum value of the NUV lightcurve in AB Mag
+mag_min_err_NUV : error on AB Mag for the minimum value in the NUV lightcurve
+cps_max_NUV : maximum value of the NUV lightcurve in counts-per-second 
+cps_max_err_NUV : counting error on counts-per-second of maximum value in the NUV lightcurve
+mag_max_NUV : maximum value of the NUV lightcurve in AB Mag
+mag_max_err_NUV : counting error on AB Mag of maximum value in the NUV lightcurve
+cps_mean_NUV : mean value of the entire NUV lightcurve in counts-per-second
+cps_mean_err_NUV : the counting error on the mean cps of the NUV lightcurve
+mag_mean_NUV : mean value of the entire NUV lightcurve in AB Mag
+mag_mean_err_NUV : the counting error on mean magnitude of the NUV lightcurve
+tstart_NUV : the start time of the NUV observation [sec, GALEX time scale]
+tstop_NUV : the stop time of the NUV observation [sec, GALEX time scale]
+expt_raw_FUV : the raw exposure time (tstop-tstart) of the FUV observation
+cps_min_FUV : minimum value of the FUV lightcurve in counts-per-second
+cps_min_err_FUV : counting error on counts-per-second of minimum value in the FUV lightcurve
+mag_min_FUV : minimum value of the FUV lightcurve in AB Mag
+mag_min_err_FUV : error on AB Mag for the minimum value in the FUV lightcurve
+cps_max_FUV : maximum value of the FUV lightcurve in counts-per-second 
+cps_max_err_FUV : counting error on counts-per-second of maximum value in the FUV lightcurve
+mag_max_FUV : maximum value of the FUV lightcurve in AB Mag
+mag_max_err_FUV : counting error on AB Mag of maximum value in the FUV lightcurve
+cps_mean_FUV : mean value of the entire FUV lightcurve in counts-per-second
+cps_mean_err_FUV : the counting error on the mean cps of the FUV lightcurve
+mag_mean_FUV : mean value of the entire FUV lightcurve in AB Mag
+mag_mean_err_FUV : the counting error on mean magnitude of the FUV lightcurve
+tstart_FUV : the start time of the FUV observation [sec, GALEX time scale]
+tstop_FUV : the stop time of the FUV observation [sec, GALEX time scale]
+expt_raw_FUV : the raw exposure time (tstop-tstart) of the FUV observation
+ratio_min : minimum FUV / NUV flux ratio in the lightcurve
+ratio_min_err : error on the minimum FUV / NUV flux ratio in the lightcurve
+ratio_max : maximum FUV / NUV flux ratio in the lightcurve
+ratio_max_err : error on the minimum FUV / NUV flux ratio in the lightcurve
+ratio_at_nuv_max : FUV / NUV flux ratio at the time bin with maximum NUV flux
+ratio_at_nuv_max_err : error on the FUV / NUV flux ratio at th etime bin with maximum NUV flux
+expt_eff_NUV : the integrated effective exposure time (corrected for dead time effects) of the NUV observation in seconds
+skybg_counts_NUV : estimated sky background in aperture in NUV in counts-per-second, computed by rescaling
+    flux measurement from the annulus
+skybg_counts_err_NUV : counting error on the estimated sky background in counts-per-second
+skybg_flux_NUV : estimated sky background in the aperture in NUV in flux units, computed by rescaling flux
+    measurement from the annulus [erg sec-1 cm-2 Å-1]
+skybg_flux_err_NUV : counting error on the estimated sky background in the aperture in NUV in flux units [erg sec-1 cm-2 Å-1]
+expt_eff_FUV : the integrated effective exposure time (corrected for dead time effects) of the FUV observation in seconds
+skybg_counts_FUV : estimated sky background in the aperture in NUV in counts-per-second, computed by rescaling
+    flux measurement from the annulus
+skybg_counts_err_FUV : counting error on the estimated sky background in counts-per-second
+skybg_flux_FUV : estimated sky background in the aperture in NUV in flux units, computed by rescaling flux
+    measurement from the annulus [erg sec-1 cm-2 Å-1]
+skybg_flux_err_FUV : counting error on the estimated sky background in the aperture in NUV in flux units [erg sec-1 cm-2 Å-1]
+morphology : manually-determined light curve morphology flag; F=Flare, E=Eclipse
+qa_flag_nuv : manually-determined data QA flag for NUV; 0 is nominal and 1 is off-nominal
+qa_flag_fuv : manually-determined data QA flag for FUV; 0 is nominal and 1 is off-nominal
+gfcat_objid : Unique GFCAT identifier for object corresponding to this source-visit (pivot for GFCAT object-level table)
