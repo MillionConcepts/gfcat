@@ -15,7 +15,7 @@ with supporting software available at [https://github.com/MillionConcepts/gfcat\
 * The contents of this repository were generated in support of a large, exploratory research effort spread over many years. They are similar in kind to unedited lab notebooks and should be approached with that attitude.
 * The form and function are generally limited to what is required for that project and may not be appropriate for your project. Everything in this repository---unless specifically noted otherwise---is released under BSD 3-Clause license, so you may do nearly anything you wish with it. Citation of the source is very much appreciated, however.
 
-A summary publication is in preparation. Prior to that, **if you use the contents of this repository in your research, cite it with the Zenodo identifier**: `Million, Chase, Scott W. Fleming, "GFCat" https://github.com/MillionConcepts/gfcat (2020). DOI:10.5281/zenodo.4147590.`
+A summary publication is in preparation. Prior to that, **if you use the contents of this repository in your research, cite it with the Zenodo identifier**: `Chase Million, Michael St. Clair, and Scott W. Fleming "GFCat" https://github.com/MillionConcepts/gfcat (2020). DOI:10.5281/zenodo.4147590.`
 
 [![DOI](https://zenodo.org/badge/276954807.svg)](https://zenodo.org/badge/latestdoi/276954807)
 
